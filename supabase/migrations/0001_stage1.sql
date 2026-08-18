@@ -183,12 +183,17 @@ begin
 
   -- Link the transaction to the match
   update public.coin_transactions
-     set reference_id = v_match_id
-   where player_id = v_challenger_id
-     and type = 'match_stake'
-     and reference_id is null
-   order by created_at desc
-   limit 1;
+   set reference_id = v_match_id
+ where player_id = v_challenger_id
+   and type = 'match_stake'
+   and reference_id is null
+   and created_at = (
+       select max(created_at)
+       from public.coin_transactions
+       where player_id = v_challenger_id
+         and type = 'match_stake'
+         and reference_id is null
+   );
 
   return v_match_id;
 end;
