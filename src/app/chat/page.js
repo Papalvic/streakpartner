@@ -15,6 +15,13 @@ export default async function ChatPage() {
     redirect("/login");
   }
 
+  // Load initial messages server-side so RLS reads pass with the HttpOnly session.
+  const { data: initialMessages } = await supabase
+    .from("general_chat_messages")
+    .select("id, user_id, content, created_at, user:profiles!general_chat_messages_user_id_fkey(username, display_name)")
+    .order("created_at", { ascending: true })
+    .limit(100);
+
   return (
     <div className="flex h-dvh flex-col pb-14">
       <header className="z-30 border-b border-line bg-night/90 backdrop-blur-md">
@@ -34,7 +41,7 @@ export default async function ChatPage() {
         </div>
       </header>
 
-      <GeneralChatClient currentUserId={user.id} />
+      <GeneralChatClient currentUserId={user.id} initialMessages={initialMessages || []} />
 
       <BottomNav active="chat" />
     </div>

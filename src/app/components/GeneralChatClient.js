@@ -2,33 +2,17 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { deleteGeneralMessage } from "@/app/actions/chat";
+import { deleteGeneralMessage, sendGeneralMessage } from "@/app/actions/chat";
 
 const MAX_LEN = 500;
 
-export default function GeneralChatClient({ currentUserId }) {
-  const [messages, setMessages] = useState([]);
+export default function GeneralChatClient({ currentUserId, initialMessages = [] }) {
+  const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [sendErr, setSendErr] = useState("");
   const bottomRef = useRef(null);
-
-  // Load initial messages
-  useEffect(() => {
-    let mounted = true;
-    async function init() {
-      const { data, error } = await supabase
-        .from("general_chat_messages")
-        .select("id, user_id, content, created_at, user:profiles!general_chat_messages_user_id_fkey(username, display_name)")
-        .order("created_at", { ascending: true })
-        .limit(100);
-      if (!error && mounted) setMessages(data || []);
-      if (mounted) setLoading(false);
-    }
-    init();
-    return () => { mounted = false; };
-  }, []);
 
   // Realtime subscription
   useEffect(() => {
@@ -61,8 +45,12 @@ export default function GeneralChatClient({ currentUserId }) {
     if (!content) return setSendErr("Message cannot be empty.");
     if (content.length > MAX_LEN) return setSendErr("Message too long.");
     setSendErr("");
-    const { error } = await supabase.from("general_chat_messages").insert({ user_id: currentUserId, content });
-    if (error) return setSendErr(error.message);
+
+    // Route through the server so auth.uid() resolves from HttpOnly cookies (RLS passes).
+    const fd = new FormData();
+    fd.set("content", content);
+    const result = await sendGeneralMessage(fd);
+    if (result?.error) return setSendErr(result.error);
     setInput("");
   };
 

@@ -62,6 +62,20 @@ export default async function TournamentDetailPage({ params }) {
 
   const profile = participants?.find((p) => p.player_id === user.id);
   const isJoined = !!profile;
+
+  // Load tournament chat messages server-side (RLS participant check passes with HttpOnly session).
+  let initialTournamentMessages = [];
+  if (isJoined) {
+    const { data: chatMessages } = await supabase
+      .from("tournament_chat_messages")
+      .select(
+        "id, user_id, content, created_at, user:profiles!tournament_chat_messages_user_id_fkey(username, display_name)"
+      )
+      .eq("tournament_id", id)
+      .order("created_at", { ascending: true })
+      .limit(200);
+    initialTournamentMessages = chatMessages || [];
+  }
   const pot = tournament.entry_fee * tournament.size;
   const progress = Math.round((tournament.current_players / tournament.size) * 100);
   const badge = STATUS_STYLES[tournament.status] || STATUS_STYLES.open;
@@ -175,7 +189,11 @@ export default async function TournamentDetailPage({ params }) {
                 Participants only
               </span>
             </div>
-            <TournamentChat tournamentId={tournament.id} currentUserId={user.id} />
+            <TournamentChat
+              tournamentId={tournament.id}
+              currentUserId={user.id}
+              initialMessages={initialTournamentMessages}
+            />
           </section>
         )}
 

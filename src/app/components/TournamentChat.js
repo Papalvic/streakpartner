@@ -2,47 +2,16 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { deleteTournamentMessage } from "@/app/actions/chat";
+import { deleteTournamentMessage, sendTournamentMessage } from "@/app/actions/chat";
 
 const MAX_LEN = 500;
 
-export default function TournamentChat({ tournamentId, currentUserId }) {
-  const [messages, setMessages] = useState([]);
+export default function TournamentChat({ tournamentId, currentUserId, initialMessages = [] }) {
+  const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [sendErr, setSendErr] = useState("");
   const bottomRef = useRef(null);
-
-  // Load current user + initial messages
-  useEffect(() => {
-    let mounted = true;
-
-    async function init() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("tournament_chat_messages")
-        .select(
-          "id, user_id, content, created_at, user:profiles!tournament_chat_messages_user_id_fkey(username, display_name)"
-        )
-        .eq("tournament_id", tournamentId)
-        .order("created_at", { ascending: true })
-        .limit(200);
-
-      if (!error && mounted) setMessages(data || []);
-
-      if (mounted) setLoading(false);
-    }
-
-    init();
-
-    return () => {
-      mounted = false;
-    };
-  }, [tournamentId]);
 
   // Realtime subscription
   useEffect(() => {
@@ -87,11 +56,12 @@ export default function TournamentChat({ tournamentId, currentUserId }) {
     if (!currentUserId) return setSendErr("Not authenticated.");
     setSendErr("");
 
-    const { error } = await supabase
-      .from("tournament_chat_messages")
-      .insert({ tournament_id: tournamentId, user_id: currentUserId, content });
-
-    if (error) return setSendErr(error.message);
+    // Route through the server so auth.uid() resolves from HttpOnly cookies (RLS passes).
+    const fd = new FormData();
+    fd.set("content", content);
+    fd.set("tournamentId", tournamentId);
+    const result = await sendTournamentMessage(fd);
+    if (result?.error) return setSendErr(result.error);
     setInput("");
   };
 
