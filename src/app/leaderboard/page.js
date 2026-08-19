@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import BottomNav from "@/app/components/BottomNav";
+import Avatar from "@/app/components/Avatar";
 import { LeaderboardIcon } from "@/app/components/Icons";
 
 export default async function LeaderboardPage() {
@@ -10,7 +12,7 @@ export default async function LeaderboardPage() {
 
   const { data: leaderboard } = await supabase
     .from("profiles")
-    .select("id, username, display_name, wins, losses, matches_played, tournament_wins")
+    .select("id, username, display_name, wins, losses, matches_played, tournament_wins, avatar_id")
     .order("wins", { ascending: false })
     .limit(50);
 
@@ -32,25 +34,30 @@ export default async function LeaderboardPage() {
             leaderboard.map((p, idx) => {
               const me = p.id === user.id;
               return (
-                <div key={p.id} className={`flex items-center gap-3 px-4 py-3 ${me ? "bg-accent-glow" : ""}`}>
-                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                    idx === 0 ? "bg-amber-400/20 text-amber-400" :
-                    idx === 1 ? "bg-slate-300/20 text-slate-300" :
-                    idx === 2 ? "bg-orange-500/20 text-orange-400" : "bg-night-700 text-slate-400"}`}>
-                    {idx + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-white">
-                      {me ? "You" : p.display_name || p.username}
-                      {me && <span className="ml-1.5 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">YOU</span>}
-                    </p>
-                    <p className="text-[11px] text-slate-500">@{p.username}</p>
+                  <div key={p.id} className={`flex items-center gap-3 px-4 py-3 ${me ? "bg-accent-glow" : ""}`}>
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                      idx === 0 ? "bg-amber-400/20 text-amber-400" :
+                      idx === 1 ? "bg-slate-300/20 text-slate-300" :
+                      idx === 2 ? "bg-orange-500/20 text-orange-400" : "bg-night-700 text-slate-400"}`}>
+                      {idx + 1}
+                    </span>
+                    <Link href={`/profile/${p.id}`} className="shrink-0">
+                      <Avatar avatarId={p.avatar_id} size={32} />
+                    </Link>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-white">
+                        <Link href={`/profile/${p.id}`} className="hover:text-accent">
+                          {me ? "You" : p.display_name || p.username}
+                        </Link>
+                        {me && <span className="ml-1.5 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">YOU</span>}
+                      </p>
+                      <p className="text-[11px] text-slate-500">@{p.username}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-white">{p.wins} <span className="text-[10px] font-medium text-slate-500">wins</span></p>
+                      <p className="text-[10px] text-slate-500">{p.matches_played ?? 0} played</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-white">{p.wins} <span className="text-[10px] font-medium text-slate-500">wins</span></p>
-                    <p className="text-[10px] text-slate-500">{p.matches_played ?? 0} played</p>
-                  </div>
-                </div>
               );
             })
           ) : (
