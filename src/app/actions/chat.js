@@ -135,18 +135,32 @@ export async function deleteGeneralMessage(formData) {
     return { error: "Not authenticated." };
   }
 
-  // RLS will enforce that the user owns the message
-  const { error } = await supabase
+  // RLS will enforce that the user owns the message.
+  // .select() confirms the delete actually removed a row owned by this user.
+  const { data: deleted, error } = await supabase
     .from("general_chat_messages")
     .delete()
-    .eq("id", messageId);
+    .eq("id", messageId)
+    .select("id")
+    .single();
 
   if (error) {
     return { error: error.message };
   }
 
+  if (!deleted?.id) {
+    return { error: "Message not found or you can only delete your own messages." };
+  }
+
+  // Broadcast so all clients viewing the chat remove the message immediately.
+  await supabase.channel("general-chat-broadcast").send({
+    type: "broadcast",
+    event: "message_deleted",
+    payload: { messageId: deleted.id },
+  });
+
   revalidatePath("/chat");
-  return { success: true };
+  return { success: true, messageId: deleted.id };
 }
 
 export async function deleteTournamentMessage(formData) {
@@ -166,18 +180,32 @@ export async function deleteTournamentMessage(formData) {
     return { error: "Not authenticated." };
   }
 
-  // RLS will enforce ownership + participant access
-  const { error } = await supabase
+  // RLS will enforce ownership + participant access.
+  // .select() confirms the delete actually removed a row owned by this user.
+  const { data: deleted, error } = await supabase
     .from("tournament_chat_messages")
     .delete()
-    .eq("id", messageId);
+    .eq("id", messageId)
+    .select("id")
+    .single();
 
   if (error) {
     return { error: error.message };
   }
 
+  if (!deleted?.id) {
+    return { error: "Message not found or you can only delete your own messages." };
+  }
+
+  // Broadcast so all participants viewing this tournament chat remove the message immediately.
+  await supabase.channel(`tournament-chat-broadcast-${tournamentId}`).send({
+    type: "broadcast",
+    event: "message_deleted",
+    payload: { messageId: deleted.id },
+  });
+
   revalidatePath(`/tournaments/${tournamentId}`);
-  return { success: true };
+  return { success: true, messageId: deleted.id };
 }
 
 export async function validateGeneralMessage(formData) {

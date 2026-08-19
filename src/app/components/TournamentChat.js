@@ -26,6 +26,12 @@ export default function TournamentChat({ tournamentId, currentUserId, initialMes
           );
         }
       })
+      .on("broadcast", { event: "message_deleted" }, ({ payload }) => {
+        const { messageId } = payload || {};
+        if (messageId) {
+          setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        }
+      })
       .subscribe();
 
     return () => supabase.removeChannel(channel);
@@ -56,8 +62,12 @@ export default function TournamentChat({ tournamentId, currentUserId, initialMes
   const del = async (id) => {
     const fd = new FormData();
     fd.set("messageId", id);
-    await deleteTournamentMessage(fd);
-    setMessages((prev) => prev.filter((m) => m.id !== id));
+    fd.set("tournamentId", tournamentId);
+    const result = await deleteTournamentMessage(fd);
+    if (result?.error) return setSendErr(result.error);
+    // Remove immediately; the message_deleted broadcast also covers other viewers.
+    const deletedId = result?.messageId || id;
+    setMessages((prev) => prev.filter((m) => m.id !== deletedId));
   };
 
   const fmt = (iso) =>
