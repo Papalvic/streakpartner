@@ -27,16 +27,36 @@ export async function sendGeneralMessage(formData) {
 
   // RLS enforces auth.uid() = user_id. The server client sets the session
   // from the HttpOnly cookies so auth.uid() resolves correctly in production.
-  const { error } = await supabase.from("general_chat_messages").insert({
-    user_id: user.id,
-    content,
-  });
+  const { data: saved, error } = await supabase
+    .from("general_chat_messages")
+    .insert({ user_id: user.id, content })
+    .select("id, user_id, content, created_at")
+    .single();
 
   if (error) {
     return { error: error.message };
   }
 
-  return { success: true };
+  // Attach the sender profile so the broadcast payload has display info.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username, display_name")
+    .eq("id", user.id)
+    .single();
+
+  const message = {
+    ...saved,
+    user: profile || { username: null, display_name: null },
+  };
+
+  // Broadcast so all clients get the message instantly without a page refresh.
+  await supabase.channel("general-chat-broadcast").send({
+    type: "broadcast",
+    event: "new_message",
+    payload: { message },
+  });
+
+  return { success: true, message };
 }
 
 export async function sendTournamentMessage(formData) {
@@ -66,18 +86,37 @@ export async function sendTournamentMessage(formData) {
 
   // Server client sets auth.uid() from HttpOnly cookies so the RLS
   // participant check + auth.uid() = user_id check both pass.
-  const { error } = await supabase.from("tournament_chat_messages").insert({
-    tournament_id: tournamentId,
-    user_id: user.id,
-    content,
-  });
+  const { data: saved, error } = await supabase
+    .from("tournament_chat_messages")
+    .insert({ tournament_id: tournamentId, user_id: user.id, content })
+    .select("id, tournament_id, user_id, content, created_at")
+    .single();
 
   if (error) {
     return { error: error.message };
   }
 
+  // Attach the sender profile so the broadcast has display info.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username, display_name")
+    .eq("id", user.id)
+    .single();
+
+  const message = {
+    ...saved,
+    user: profile || { username: null, display_name: null },
+  };
+
+  // Broadcast to the tournament channel so all participants get it instantly.
+  await supabase.channel(`tournament-chat-broadcast-${tournamentId}`).send({
+    type: "broadcast",
+    event: "new_message",
+    payload: { message },
+  });
+
   revalidatePath(`/tournaments/${tournamentId}`);
-  return { success: true };
+  return { success: true, message };
 }
 
 export async function deleteGeneralMessage(formData) {

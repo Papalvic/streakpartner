@@ -13,35 +13,23 @@ export default function TournamentChat({ tournamentId, currentUserId, initialMes
   const [sendErr, setSendErr] = useState("");
   const bottomRef = useRef(null);
 
-  // Realtime subscription
+  // Realtime subscription (broadcast from the server action — no browser JWT needed,
+  // works with the HttpOnly-cookie auth architecture).
   useEffect(() => {
-    if (!currentUserId) return;
-
     const channel = supabase
-      .channel(`tournament-chat-${tournamentId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "tournament_chat_messages" },
-        async (payload) => {
-          const nm = payload.new;
-          // Fetch profile if realtime payload does not include join
-          if (!nm.user && nm.user_id) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("username, display_name")
-              .eq("id", nm.user_id)
-              .single();
-            nm.user = profile;
-          }
+      .channel(`tournament-chat-broadcast-${tournamentId}`)
+      .on("broadcast", { event: "new_message" }, ({ payload }) => {
+        const nm = payload?.message;
+        if (nm?.id) {
           setMessages((prev) =>
             prev.some((m) => m.id === nm.id) ? prev : [...prev, nm]
           );
         }
-      )
+      })
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, [tournamentId, currentUserId]);
+  }, [tournamentId]);
 
   // Scroll to bottom on new messages
   useEffect(() => {

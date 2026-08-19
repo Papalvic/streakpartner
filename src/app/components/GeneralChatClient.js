@@ -14,25 +14,22 @@ export default function GeneralChatClient({ currentUserId, initialMessages = [] 
   const [sendErr, setSendErr] = useState("");
   const bottomRef = useRef(null);
 
-  // Realtime subscription
+  // Realtime subscription (broadcast from the server action — no browser JWT needed,
+  // works with the HttpOnly-cookie auth architecture).
   useEffect(() => {
-    if (!currentUserId) return;
     const channel = supabase
-      .channel("general-chat")
-      .on("postgres_changes",
-        { event: "INSERT", schema: "public", table: "general_chat_messages" },
-        async (payload) => {
-          const nm = payload.new;
-          if (!nm.user && nm.user_id) {
-            const { data: profile } = await supabase
-              .from("profiles").select("username, display_name").eq("id", nm.user_id).single();
-            nm.user = profile;
-          }
-          setMessages((prev) => prev.some((m) => m.id === nm.id) ? prev : [...prev, nm]);
-        })
+      .channel("general-chat-broadcast")
+      .on("broadcast", { event: "new_message" }, ({ payload }) => {
+        const nm = payload?.message;
+        if (nm?.id) {
+          setMessages((prev) =>
+            prev.some((m) => m.id === nm.id) ? prev : [...prev, nm]
+          );
+        }
+      })
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [currentUserId]);
+  }, []);
 
   // Scroll bottom
   useEffect(() => {
