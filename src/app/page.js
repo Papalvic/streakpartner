@@ -1,38 +1,28 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logOut } from "@/app/actions/auth";
+import { createMatch, acceptMatch, settleMatch } from "@/app/actions/matches";
+import BottomNav from "@/app/components/BottomNav";
 import {
-  createMatch,
-  acceptMatch,
-  settleMatch,
-} from "@/app/actions/matches";
+  FlameIcon, CoinIcon, CheckIcon, PlusIcon, LogoutIcon, FireIcon,
+} from "@/app/components/Icons";
 
 async function getDashboardData() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Fetch current user's profile
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+    .from("profiles").select("*").eq("id", user.id).single();
 
-  // Fetch all players (for challenge dropdown)
   const { data: players } = await supabase
     .from("profiles")
-    .select("id, username, display_name")
+    .select("id, username, display_name, wins")
     .neq("id", user.id)
-    .order("username");
+    .order("wins", { ascending: false })
+    .limit(10);
 
-  // Fetch matches involving this user
   const { data: matches } = await supabase
     .from("matches")
     .select(
@@ -44,260 +34,155 @@ async function getDashboardData() {
     .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`)
     .order("created_at", { ascending: false });
 
-  return { user, profile, players, matches };
+  const { data: leaderboard } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, wins")
+    .order("wins", { ascending: false })
+    .limit(10);
+
+  return { user, profile, players, matches, leaderboard };
 }
 
 export default async function Dashboard() {
-  const { user, profile, players, matches } = await getDashboardData();
+  const { user, profile, players, matches, leaderboard } = await getDashboardData();
 
-  const isChallenger = (match) => match.challenger_id === user.id;
-  const getOpponent = (match) =>
-    isChallenger(match) ? match.opponent : match.challenger;
+  const isChallenger = (m) => m.challenger_id === user.id;
+  const getOpp = (m) => (isChallenger(m) ? m.opponent : m.challenger);
 
-  const pendingMatches = matches?.filter(
-    (m) => m.status === "pending" && m.opponent_id === user.id
-  );
-  const activeMatches = matches?.filter((m) =>
-    ["accepted"].includes(m.status)
-  );
-  const completedMatches = matches?.filter((m) => m.status === "completed");
+  const pendingMatches = matches?.filter((m) => m.status === "pending" && m.opponent_id === user.id);
+  const activeMatches = matches?.filter((m) => m.status === "accepted");
+  const completedMatches = matches?.filter((m) => m.status === "completed").slice(0, 5);
+
+  const bal = profile?.balance ?? 0;
+  const wins = profile?.wins ?? 0;
+  const losses = profile?.losses ?? 0;
+  const played = profile?.matches_played ?? 0;
+  const trophies = profile?.tournament_wins ?? 0;
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
+    <div className="min-h-screen pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-black/80">
+      <header className="sticky top-0 z-30 border-b border-line bg-night/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-lg items-center justify-between px-4">
-          <div>
-            <h1 className="text-lg font-bold text-black dark:text-zinc-50">
-              StreakPartner
-            </h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              @{profile?.username || user.email?.split("@")[0]}
-            </p>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+              <FlameIcon size={20} />
+            </div>
+            <div>
+              <h1 className="text-base font-extrabold tracking-tight text-white">
+                Streak<span className="text-accent">Partner</span>
+              </h1>
+              <p className="text-[11px] font-medium text-slate-400">
+                @{profile?.username || user.email?.split("@")[0]}
+              </p>
+            </div>
           </div>
           <form action={logOut}>
-            <button
-              type="submit"
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
+            <button type="submit"
+              className="flex items-center gap-1.5 rounded-lg border border-line bg-night-800 px-3 py-2 text-xs font-medium text-slate-300 hover:border-line-light hover:text-white transition-colors">
+              <LogoutIcon size={15} />
               Logout
             </button>
           </form>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-20 pt-5">
-        {/* Balance card */}
-        <section className="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-700 p-6 text-white shadow-sm dark:from-zinc-800 dark:to-zinc-900">
-          <p className="text-xs font-medium uppercase tracking-wider text-zinc-400">
-            PromptCoin Balance
-          </p>
-          <p className="mt-1 text-4xl font-bold">{profile?.balance ?? 0}</p>
-          <div className="mt-4 grid grid-cols-4 gap-2 text-center">
-            <div className="rounded-lg bg-white/10 py-2">
-              <p className="text-sm font-bold">{profile?.matches_played ?? 0}</p>
-              <p className="text-[11px] text-zinc-400">Matches</p>
+      <main className="mx-auto w-full max-w-lg px-4 pt-4">
+        {/* Balance hero */}
+        <section className="relative overflow-hidden rounded-2xl border border-accent/20 bg-gradient-to-br from-night-700 via-night-800 to-night-900 p-5 shadow-[0_0_40px_rgba(37,211,102,0.08)]">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent/10 blur-2xl" />
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">PromptCoin Balance</p>
+              <div className="flex items-center gap-1 rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent">
+                <FireIcon size={12} /> Streak
+              </div>
             </div>
-            <div className="rounded-lg bg-white/10 py-2">
-              <p className="text-sm font-bold text-green-400">{profile?.wins ?? 0}</p>
-              <p className="text-[11px] text-zinc-400">Wins</p>
+            <div className="mt-2 flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                <CoinIcon size={24} />
+              </div>
+              <p className="text-4xl font-black tracking-tight text-white">{bal.toLocaleString()}</p>
             </div>
-            <div className="rounded-lg bg-white/10 py-2">
-              <p className="text-sm font-bold text-red-400">{profile?.losses ?? 0}</p>
-              <p className="text-[11px] text-zinc-400">Losses</p>
-            </div>
-            <div className="rounded-lg bg-white/10 py-2">
-              <p className="text-sm font-bold">{profile?.tournament_wins ?? 0}</p>
-              <p className="text-[11px] text-zinc-400">Trophies</p>
+            <div className="mt-5 grid grid-cols-4 gap-2">
+              <Stat num={played} label="Matches" />
+              <Stat num={wins} label="Wins" cls="text-accent" />
+              <Stat num={losses} label="Losses" cls="text-red-400" />
+              <Stat num={trophies} label="Trophies" cls="text-amber-400" />
             </div>
           </div>
         </section>
 
-        {/* Create match */}
-        <section className="mt-5 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-base font-semibold text-black dark:text-zinc-50">
-            Create Match Challenge
-          </h2>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Costs 5 PromptCoin. Winner takes the 10 coin pot.
-          </p>
-
-          {players?.length === 0 ? (
-            <p className="mt-4 rounded-lg bg-zinc-100 p-3 text-center text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-              No other players yet. Ask a friend to sign up!
+        {/* Play Match */}
+        <section className="mt-5">
+          <div className="g-card-press flex items-center gap-3 p-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/15 text-accent">
+              <PlusIcon size={24} />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">Play Match</h2>
+              <p className="text-xs text-slate-400">Costs 5 PromptCoin · Winner takes the 10 pot</p>
+            </div>
+          </div>
+          <div className="mt-2 g-card p-4">
+            {players?.length === 0 ? (
+              <p className="rounded-lg bg-night-800 px-4 py-3 text-center text-xs text-slate-400">
+                No other players yet. Ask a friend to sign up!
+              </p>
+            ) : (
+              <form action={createMatch} className="flex gap-2">
+                <select name="opponentId" required defaultValue=""
+                  className="h-12 flex-1 rounded-xl border border-line bg-night-800 px-3 text-sm text-white outline-none focus:border-accent transition-colors">
+                  <option value="" disabled>Select opponent</option>
+                  {players?.map((p) => (
+                    <option key={p.id} value={p.id} className="bg-night-900">
+                      @{p.username}
+                      {p.display_name && p.display_name !== p.username ? ` (${p.display_name})` : ""}
+                    </option>
+                  ))}
+                </select>
+                <button type="submit"
+                  className="flex h-12 items-center gap-1.5 whitespace-nowrap rounded-xl bg-accent px-4 text-sm font-bold text-black hover:bg-accent-soft transition-colors">
+                  <PlusIcon size={16} /> Challenge
+                </button>
+              </form>
+            )}
+            <p className="mt-3 text-[11px] text-slate-500">
+              Stakes: <span className="text-accent">5 PromptCoin</span> each · Pot: <span className="text-white">10 PromptCoin</span>
             </p>
-          ) : (
-            <form action={createMatch} className="mt-4 flex gap-2">
-              <select
-                name="opponentId"
-                required
-                defaultValue=""
-                className="h-11 flex-1 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-black outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-              >
-                <option value="" disabled>
-                  Select opponent
-                </option>
-                {players?.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    @{p.username}
-                    {p.display_name && p.display_name !== p.username
-                      ? ` (${p.display_name})`
-                      : ""}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="h-11 whitespace-nowrap rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-300"
-              >
-                Challenge
-              </button>
-            </form>
-          )}
+          </div>
         </section>
 
-        {/* Pending incoming matches */}
+        {/* Incoming challenges */}
         {pendingMatches?.length > 0 && (
-          <section className="mt-5">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Incoming Challenges
-            </h2>
-            <div className="flex flex-col gap-3">
-              {pendingMatches.map((m) => (
-                <div
-                  key={m.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-black dark:text-zinc-50">
-                        {getOpponent(m)?.display_name ||
-                          getOpponent(m)?.username ||
-                          "Player"}
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        @{getOpponent(m)?.username || "unknown"} challenged you
-                        · {m.stake} coins each
-                      </p>
-                    </div>
-                    <form action={acceptMatch}>
-                      <input type="hidden" name="matchId" value={m.id} />
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-green-600 px-4 py-2 text-xs font-semibold text-white hover:bg-green-700"
-                      >
-                        Accept
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              ))}
+          <section className="mt-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Incoming Challenges</h2>
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-bold text-black">
+                {pendingMatches.length}
+              </span>
             </div>
-          </section>
-        )}
-
-        {/* Active matches */}
-        {activeMatches?.length > 0 && (
-          <section className="mt-5">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Accepted Matches
-            </h2>
             <div className="flex flex-col gap-3">
-              {activeMatches.map((m) => (
-                <div
-                  key={m.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-black dark:text-zinc-50">
-                        {getOpponent(m)?.display_name ||
-                          getOpponent(m)?.username ||
-                          "Player"}
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        @{getOpponent(m)?.username || "unknown"} · pot:{" "}
-                        {m.stake * 2} coins
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                      In progress
-                    </span>
-                  </div>
-                  <form
-                    action={settleMatch}
-                    className="mt-3 border-t border-zinc-200 pt-3 dark:border-zinc-800"
-                  >
-                    <input type="hidden" name="matchId" value={m.id} />
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="text-xs text-zinc-500">
-                        Your score
-                        <input
-                          type="number"
-                          name="challengerScore"
-                          min="0"
-                          required
-                          placeholder="Your score"
-                          className="mt-1 h-10 w-full rounded-lg border border-zinc-300 px-3 text-sm text-black outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                        />
-                      </label>
-                      <label className="text-xs text-zinc-500">
-                        Opponent score
-                        <input
-                          type="number"
-                          name="opponentScore"
-                          min="0"
-                          required
-                          placeholder="Opponent score"
-                          className="mt-1 h-10 w-full rounded-lg border border-zinc-300 px-3 text-sm text-black outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                        />
-                      </label>
-                    </div>
-                    <button
-                      type="submit"
-                      className="mt-3 h-11 w-full rounded-lg bg-zinc-900 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-300"
-                    >
-                      Submit Result & Claim Pot
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Completed matches */}
-        {completedMatches?.length > 0 && (
-          <section className="mt-5">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Completed Matches
-            </h2>
-            <div className="flex flex-col gap-2">
-              {completedMatches.map((m) => {
-                const won = m.winner_id === user.id;
+              {pendingMatches.map((m) => {
+                const opp = getOpp(m);
                 return (
-                  <div
-                    key={m.id}
-                    className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-black dark:text-zinc-50">
-                        vs {getOpponent(m)?.display_name || getOpponent(m)?.username || "Player"}
-                      </p>
-                      <p className="text-xs text-zinc-500">
-                        {new Date(m.created_at).toLocaleDateString()}
-                      </p>
+                  <div key={m.id} className="g-card animate-pop p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-bold text-accent">
+                        {opp?.display_name?.[0] || opp?.username?.[0] || "?"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-white">{opp?.display_name || opp?.username || "Player"}</p>
+                        <p className="text-xs text-slate-400">@{opp?.username || "unknown"} · stake {m.stake} coins</p>
+                      </div>
+                      <form action={acceptMatch}>
+                        <input type="hidden" name="matchId" value={m.id} />
+                        <button type="submit"
+                          className="flex items-center gap-1 rounded-xl bg-accent px-4 py-2 text-xs font-bold text-black hover:bg-accent-soft transition-colors">
+                          <CheckIcon size={14} /> Accept
+                        </button>
+                      </form>
                     </div>
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        won
-                          ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                          : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                      }`}
-                    >
-                      {won ? "WON" : "LOST"} · +{won ? m.stake * 2 : 0}{" "}
-                      coins
-                    </span>
                   </div>
                 );
               })}
@@ -305,16 +190,138 @@ export default async function Dashboard() {
           </section>
         )}
 
-        {/* Empty state */}
-        {(!matches || matches.length === 0) && (
-          <div className="mt-10 text-center">
-            <p className="text-4xl">⚽</p>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              No matches yet. Challenge another player to get started!
-            </p>
+        {/* Active matches */}
+        {activeMatches?.length > 0 && (
+          <section className="mt-6">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">Matches in Progress</h2>
+            <div className="flex flex-col gap-3">
+              {activeMatches.map((m) => {
+                const opp = getOpp(m);
+                const role = isChallenger(m);
+                return (
+                  <div key={m.id} className="g-card overflow-hidden">
+                    <div className="flex items-center justify-between p-4 pb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-bold text-accent">
+                          {opp?.display_name?.[0] || opp?.username?.[0] || "?"}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white">{opp?.display_name || opp?.username || "Player"}</p>
+                          <p className="text-xs text-slate-400">Pot: {m.stake * 2} coins · <span className="text-accent">In progress</span></p>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold text-accent">LIVE</span>
+                    </div>
+                    <form action={settleMatch} className="border-t border-line p-4">
+                      <input type="hidden" name="matchId" value={m.id} />
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-slate-400">Your score</span>
+                          <input type="number" name={role ? "challengerScore" : "opponentScore"} min="0" required placeholder="0"
+                            className="h-11 w-full rounded-xl border border-line bg-night-800 px-3 text-sm text-white outline-none focus:border-accent transition-colors" />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-slate-400">Opponent score</span>
+                          <input type="number" name={role ? "opponentScore" : "challengerScore"} min="0" required placeholder="0"
+                            className="h-11 w-full rounded-xl border border-line bg-night-800 px-3 text-sm text-white outline-none focus:border-accent transition-colors" />
+                        </label>
+                      </div>
+                      <button type="submit"
+                        className="mt-3 h-11 w-full rounded-xl bg-accent text-sm font-bold text-black hover:bg-accent-soft transition-colors">
+                        Submit Result & Claim Pot
+                      </button>
+                    </form>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Recent matches */}
+        <section className="mt-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">Recent Matches</h2>
+            <a href="/matches" className="text-xs font-semibold text-accent">View all</a>
           </div>
+          {completedMatches?.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {completedMatches.map((m) => {
+                const opp = getOpp(m);
+                const won = m.winner_id === user.id;
+                return (
+                  <div key={m.id} className="g-card-press flex items-center justify-between rounded-xl px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
+                        {won ? "W" : "L"}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">vs {opp?.display_name || opp?.username || "Player"}</p>
+                        <p className="text-[11px] text-slate-500">{new Date(m.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
+                      {won ? "WON" : "LOST"} · {won ? `+${m.stake * 2}` : `-${m.stake}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="g-card rounded-2xl p-6 text-center">
+              <p className="text-3xl">⚽</p>
+              <p className="mt-2 text-sm text-slate-400">No matches yet. Challenge another player to get started!</p>
+            </div>
+          )}
+        </section>
+
+        {/* Leaderboard preview */}
+        {leaderboard?.length > 0 && (
+          <section className="mt-6 pb-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">Leaderboard</h2>
+              <a href="/leaderboard" className="text-xs font-semibold text-accent">View all</a>
+            </div>
+            <div className="g-card divide-y divide-line overflow-hidden">
+              {leaderboard?.slice(0, 5).map((p, idx) => {
+                const me = p.id === user.id;
+                return (
+                  <div key={p.id} className={`flex items-center gap-3 px-4 py-3 ${me ? "bg-accent-glow" : ""}`}>
+                    <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                      idx === 0 ? "bg-amber-400/20 text-amber-400" :
+                      idx === 1 ? "bg-slate-300/20 text-slate-300" :
+                      idx === 2 ? "bg-orange-500/20 text-orange-400" : "bg-night-700 text-slate-400"}`}>
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-white">
+                        {me ? "You" : p.display_name || p.username}
+                        {me && <span className="ml-1.5 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">YOU</span>}
+                      </p>
+                      <p className="text-[11px] text-slate-500">@{p.username}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-white">{p.wins}</p>
+                      <p className="text-[10px] text-slate-500">wins</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         )}
       </main>
+
+      <BottomNav active="home" />
+    </div>
+  );
+}
+
+function Stat({ num, label, cls = "" }) {
+  return (
+    <div className="rounded-xl border border-line bg-night-900/60 p-2.5 text-center">
+      <p className={`text-lg font-bold ${cls || "text-white"}`}>{num}</p>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
     </div>
   );
 }
