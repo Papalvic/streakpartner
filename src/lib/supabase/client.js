@@ -9,5 +9,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Singleton browser client - prevents multiple instances in the browser
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Singleton browser client - prevents multiple instances in the browser.
+// Realtime is enabled via the realtime option for live chat subscriptions.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+});

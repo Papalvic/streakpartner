@@ -1,32 +1,161 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import BottomNav from "@/app/components/BottomNav";
 import { ChatIcon } from "@/app/components/Icons";
+import { supabase } from "@/lib/supabase/client";
+import { deleteGeneralMessage } from "@/app/actions/chat";
 
-export default async function ChatPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+const MAX_LEN = 500;
+
+export default function ChatPage() {
+  const router = useRouter();
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [sendErr, setSendErr] = useState("");
+  const bottomRef = useRef(null);
+
+  // Load user + messages
+  useEffect(() => {
+    let mounted = true;
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
+      if (!mounted) return;
+      setCurrentUserId(user.id);
+      const { data, error } = await supabase
+        .from("general_chat_messages")
+        .select("id, user_id, content, created_at, user:profiles!general_chat_messages_user_id_fkey(username, display_name)")
+        .order("created_at", { ascending: true })
+        .limit(100);
+      if (!error && mounted) setMessages(data || []);
+      if (mounted) setLoading(false);
+    }
+    init();
+    return () => { mounted = false; };
+  }, [router]);
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!currentUserId) return;
+    const channel = supabase
+      .channel("general-chat")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "general_chat_messages" },
+        async (payload) => {
+          const nm = payload.new;
+          if (!nm.user && nm.user_id) {
+            const { data: profile } = await supabase
+              .from("profiles").select("username, display_name").eq("id", nm.user_id).single();
+            nm.user = profile;
+          }
+          setMessages((prev) => prev.some((m) => m.id === nm.id) ? prev : [...prev, nm]);
+        })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [currentUserId]);
+
+  // Scroll bottom
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length]);
+
+  const send = async (e) => {
+    e.preventDefault();
+    const content = input.trim();
+    if (!content) return setSendErr("Message cannot be empty.");
+    if (content.length > MAX_LEN) return setSendErr("Message too long.");
+    if (!currentUserId) return setSendErr("Not authenticated.");
+    setSendErr("");
+    const { error } = await supabase.from("general_chat_messages").insert({ user_id: currentUserId, content });
+    if (error) return setSendErr(error.message);
+    setInput("");
+  };
+
+  const del = async (id) => {
+    const fd = new FormData();
+    fd.set("messageId", id);
+    await deleteGeneralMessage(fd);
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const fmt = (iso) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <div className="min-h-screen pb-24">
-      <header className="sticky top-0 z-30 border-b border-line bg-night/90 backdrop-blur-md">
-        <div className="mx-auto flex h-16 w-full max-w-lg items-center justify-between px-4">
+    <div className="flex h-dvh flex-col pb-14">
+      <header className="z-30 border-b border-line bg-night/90 backdrop-blur-md">
+        <div className="mx-auto flex h-14 w-full max-w-lg items-center justify-between px-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
               <ChatIcon size={20} />
             </div>
-            <h1 className="text-base font-extrabold text-white">Chat</h1>
+            <div>
+              <h1 className="text-base font-extrabold text-white">General Chat</h1>
+              <p className="text-[10px] text-slate-400">Community channel</p>
+            </div>
           </div>
+          <span className="flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-1 text-[10px] font-semibold text-accent">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" /> LIVE
+          </span>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-lg px-4 pt-8">
-        <div className="g-card w-full rounded-2xl p-8 text-center">
-          <p className="text-5xl">💬</p>
-          <h2 className="mt-3 text-lg font-bold text-white">Chat</h2>
-          <p className="mt-1 text-sm text-slate-400">Chat with players is coming soon.</p>
+
+      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col overflow-y-auto px-3 py-3">
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center"><p className="text-sm text-slate-500">Loading messages...</p></div>
+        ) : err ? (
+          <div className="flex flex-1 items-center justify-center"><p className="text-sm text-red-400">{err}</p></div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center text-center">
+            <p className="text-4xl">💬</p>
+            <p className="mt-3 text-sm font-semibold text-white">No messages yet</p>
+            <p className="mt-1 text-xs text-slate-500">Say hi to the community!</p>
+          </div>
+        ) : (
+          messages.map((m) => {
+            const mine = m.user_id === currentUserId;
+            const name = m.user?.display_name || m.user?.username || "Player";
+            return (
+              <div key={m.id} className={`flex w-full mb-2 ${mine ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${mine ? "bg-accent/20 border border-accent/30 rounded-br-sm" : "bg-night-800 border border-line rounded-bl-sm"}`}>
+                  <div className={`mb-0.5 flex items-baseline gap-2 ${mine ? "justify-end" : ""}`}>
+                    <span className={`text-[10px] font-bold ${mine ? "text-accent" : "text-slate-400"}`}>
+                      {mine ? "You" : name}
+                    </span>
+                    <span className="text-[9px] text-slate-500">{fmt(m.created_at)}</span>
+                  </div>
+                  <p className="break-words text-sm text-white">{m.content}</p>
+                  {mine && (
+                    <div className="mt-1 text-right">
+                      <button onClick={() => del(m.id)} className="text-[9px] text-slate-500 hover:text-red-400 transition-colors">Delete</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="border-t border-line bg-night/90 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
+        <div className="mx-auto w-full max-w-lg px-3 py-2">
+          {sendErr && <p className="mb-1 text-[11px] text-red-400">{sendErr}</p>}
+          <form onSubmit={send} className="flex gap-2">
+            <input type="text" value={input}
+              onChange={(e) => { if (e.target.value.length <= MAX_LEN) setInput(e.target.value); }}
+              placeholder="Type a message..."
+              className="h-11 flex-1 rounded-xl border border-line bg-night-800 px-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-accent" />
+            <button type="submit" disabled={!input.trim()}
+              className="flex h-11 items-center justify-center rounded-xl bg-accent px-4 text-sm font-bold text-black transition-colors hover:bg-accent-soft disabled:opacity-40">Send</button>
+          </form>
+          <p className="mt-1 text-center text-[9px] text-slate-600">{input.length}/{MAX_LEN}</p>
         </div>
-      </main>
+      </div>
+
       <BottomNav active="chat" />
     </div>
   );

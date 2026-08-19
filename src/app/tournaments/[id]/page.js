@@ -3,7 +3,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { joinTournament } from "@/app/actions/tournaments";
 import BottomNav from "@/app/components/BottomNav";
-import { TournamentIcon, PlusIcon, CheckIcon } from "@/app/components/Icons";
+import { TournamentIcon, PlusIcon, CheckIcon, ChatIcon } from "@/app/components/Icons";
+import TournamentChat from "@/app/components/TournamentChat";
 
 const SIZE_LABELS = { 4: "4 Players", 8: "8 Players", 16: "16 Players", 32: "32 Players" };
 
@@ -161,6 +162,22 @@ export default async function TournamentDetailPage({ params }) {
             )}
           </div>
         </section>
+
+        {/* Tournament Chat (participants only) */}
+        {isJoined && (
+          <section className="mt-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-widest text-slate-400">
+                <ChatIcon size={14} className="text-accent" />
+                Tournament Chat
+              </h2>
+              <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
+                Participants only
+              </span>
+            </div>
+            <TournamentChat tournamentId={tournament.id} currentUserId={user.id} />
+          </section>
+        )}
 
         {/* Participants */}
         <section className="mt-5">
