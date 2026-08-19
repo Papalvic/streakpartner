@@ -2,8 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
-export async function signUp(formData) {
+export async function signUp(prevState, formData) {
   const supabase = await createClient();
 
   const email = formData.get("email");
@@ -19,7 +20,7 @@ export async function signUp(formData) {
     return { error: "Password must be at least 6 characters." };
   }
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -34,10 +35,23 @@ export async function signUp(formData) {
     return { error: error.message };
   }
 
-  redirect("/");
+  // If email confirmation is ENABLED, signUp returns a session: null and
+  // requires the user to click the confirmation link before logging in.
+  if (data?.session) {
+    // Confirmation is disabled — user is already authenticated.
+    revalidatePath("/", "layout");
+    redirect("/");
+  }
+
+  // Confirmation is enabled — user must verify their email first.
+  return {
+    success: true,
+    message:
+      "Account created. Please check your email and click the confirmation link, then log in.",
+  };
 }
 
-export async function logIn(formData) {
+export async function logIn(prevState, formData) {
   const supabase = await createClient();
 
   const email = formData.get("email");
@@ -56,6 +70,22 @@ export async function logIn(formData) {
     return { error: error.message };
   }
 
+  // IMPORTANT FIX: Force the auth session cookies to be written to the
+  // response by reading the session back before redirecting. Without this,
+  // the cookies set by signInWithPassword can be dropped when redirect() is
+  // called in the same Server Action, leaving the user unauthenticated
+  // after navigating to "/".
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    return {
+      error: "Failed to establish a session. Please try again.",
+    };
+  }
+
+  revalidatePath("/", "layout");
   redirect("/");
 }
 
