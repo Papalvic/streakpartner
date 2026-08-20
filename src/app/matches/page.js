@@ -127,6 +127,28 @@ export default async function MatchesPage({ searchParams }) {
             <p className="mt-1 text-sm text-slate-400">Challenge another player to start playing.</p>
           </div>
         )}
+        {/* Pagination */}
+        {(count || 0) > PAGE_SIZE && (
+          <div className="mt-6 flex items-center justify-between gap-2">
+            {page > 1 ? (
+              <Link href={`/matches?page=${page - 1}`} className="flex h-11 flex-1 items-center justify-center rounded-xl border border-line bg-night-800 text-sm font-bold text-slate-300 hover:text-white">
+                ← Prev
+              </Link>
+            ) : (
+              <span className="h-11 flex-1" />
+            )}
+            <span className="shrink-0 text-center text-xs text-slate-500">
+              Page {page} of {Math.max(1, Math.ceil(count / PAGE_SIZE))}
+            </span>
+            {page < Math.ceil(count / PAGE_SIZE) ? (
+              <Link href={`/matches?page=${page + 1}`} className="flex h-11 flex-1 items-center justify-center rounded-xl border border-line bg-night-800 text-sm font-bold text-slate-300 hover:text-white">
+                Next →
+              </Link>
+            ) : (
+              <span className="h-11 flex-1" />
+            )}
+          </div>
+        )}
       </main>
       <BottomNav active="matches" />
     </div>
