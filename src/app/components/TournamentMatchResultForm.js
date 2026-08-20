@@ -121,23 +121,27 @@ export default function TournamentMatchResultForm({ match, currentUserId }) {
             </p>
           ) : null}
           {!isDrawPreview && (
-            <p className="mt-0.5 text-[9px] text-slate-500">Screenshot optional · entry fee already paid.</p>
+            <p className="mt-0.5 text-[9px] text-slate-500">Entry fee already paid.</p>
           )}
         </div>
       )}
 
-      {/* Optional screenshot */}
-      <div className="mt-1">
-        <span className="mb-1 block text-xs font-medium text-slate-400">Screenshot Proof (Optional)</span>
+      {/* REQUIRED screenshot */}
+      <div className="mt-1 rounded-lg border border-blue-500/40 bg-blue-500/10 p-2">
+        <p className="mb-1 text-xs font-bold text-blue-400">SCREENSHOT PROOF — REQUIRED</p>
         <input type="file" accept="image/*" onChange={handleScreenshot} disabled={uploading}
           className="w-full text-xs text-slate-300 file:mr-2 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:text-xs file:font-bold file:text-black hover:file:bg-accent-soft" />
-        {screenshotUrl && <p className="mt-1 text-xs text-accent">Screenshot uploaded ✓</p>}
+        {screenshotUrl ? (
+          <p className="mt-1 text-xs text-accent">Screenshot uploaded ✓</p>
+        ) : (
+          <p className="mt-1 text-[10px] text-red-400">Upload a screenshot to submit the result.</p>
+        )}
       </div>
 
       {err && <p className="mt-2 text-xs text-red-400">{err}</p>}
       {msg && <p className="mt-2 text-xs text-accent">{msg}</p>}
 
-      <button type="submit" disabled={loading || uploading || player1Score === "" || player2Score === ""}
+      <button type="submit" disabled={loading || uploading || player1Score === "" || player2Score === "" || !screenshotUrl}
         className="mt-4 h-12 w-full rounded-xl bg-accent text-sm font-bold text-black hover:bg-accent-soft disabled:opacity-40">
         {loading ? "Submitting..." : "Submit Result"}
       </button>
