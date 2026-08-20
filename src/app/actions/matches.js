@@ -123,34 +123,28 @@ export async function acceptMatch(formData) {
 export async function settleMatch(formData) {
   const supabase = await createClient();
   const matchId = formData.get("matchId");
-  const pageChallengerScore = Number(formData.get("challengerScore"));
-  const pageOpponentScore = Number(formData.get("opponentScore"));
-  const screenshotUrl = formData.get("screenshotUrl");
+  const yourScore = Number(formData.get("yourScore"));
+  const oppScore = Number(formData.get("oppScore"));
+  const screenshotUrl = formData.get("screenshotUrl") || null;
 
   if (!matchId) {
     return { error: "Match ID is required." };
   }
 
-  // Scores must be integers >= 0.
+  // Scores must be integers >= 0. Draws are now valid.
   if (
-    !Number.isInteger(pageChallengerScore) ||
-    !Number.isInteger(pageOpponentScore) ||
-    pageChallengerScore < 0 ||
-    pageOpponentScore < 0
+    !Number.isInteger(yourScore) ||
+    !Number.isInteger(oppScore) ||
+    yourScore < 0 ||
+    oppScore < 0
   ) {
     return { error: "Scores must be whole numbers 0 or greater." };
   }
 
-  // Screenshot proof is required.
-  if (!screenshotUrl || screenshotUrl === "manual") {
-    return { error: "Screenshot proof is required to submit a result." };
-  }
-
-  // IMPORTANT: Fetch the match to correctly map scores to challenger/opponent
-  // and derive the winner from scores, never trusting a client-supplied winnerId.
+  // IMPORTANT: Fetch the match to map scores to challenger/opponent roles.
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("challenger_id, opponent_id")
+    .select("challenger_id, opponent_id, status, settled")
     .eq("id", matchId)
     .single();
 
@@ -158,8 +152,6 @@ export async function settleMatch(formData) {
     return { error: "Match not found." };
   }
 
-  // Determine whether the submitting user is the challenger or opponent,
-  // then map the submitted scores accordingly.
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -168,33 +160,23 @@ export async function settleMatch(formData) {
     return { error: "Not authenticated." };
   }
 
+  // Either participant may submit; the server verifies membership.
   let challengerScore;
   let opponentScore;
-  let winnerId;
 
   if (user.id === match.challenger_id) {
-    challengerScore = pageChallengerScore;
-    opponentScore = pageOpponentScore;
-    winnerId =
-      challengerScore > opponentScore ? user.id : match.opponent_id;
-    if (challengerScore === opponentScore) {
-      return { error: "Scores cannot be tied." };
-    }
+    challengerScore = yourScore;
+    opponentScore = oppScore;
   } else if (user.id === match.opponent_id) {
-    challengerScore = pageOpponentScore;
-    opponentScore = pageChallengerScore;
-    winnerId =
-      pageOpponentScore > pageChallengerScore ? user.id : match.challenger_id;
-    if (pageOpponentScore === pageChallengerScore) {
-      return { error: "Scores cannot be tied." };
-    }
+    challengerScore = oppScore;
+    opponentScore = yourScore;
   } else {
     return { error: "Only match participants can submit results." };
   }
 
+  // The RPC enforces accepted status + not settled + derives the winner.
   const { error } = await supabase.rpc("settle_match", {
     p_match_id: matchId,
-    p_winner_id: winnerId,
     p_challenger_score: challengerScore,
     p_opponent_score: opponentScore,
     p_screenshot_url: screenshotUrl,
@@ -205,5 +187,132 @@ export async function settleMatch(formData) {
   }
 
   revalidatePath("/");
+  revalidatePath(`/matches/${matchId}`);
   return { success: true };
+}
+
+export async function findMatchByCode(formData) {
+  const supabase = await createClient();
+  const code = String(formData.get("code") || "").trim();
+
+  if (!code) {
+    return { error: "Enter a challenge code." };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated." };
+  }
+
+  // Server checks: pending, not own challenge. Returns match id.
+  const { data, error } = await supabase.rpc("find_match_by_code", {
+    p_code: code,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true, matchId: data };
+}
+
+export async function sendMatchMessage(formData) {
+  const supabase = await createClient();
+  const matchId = formData.get("matchId");
+  const content = String(formData.get("content") || "").trim();
+
+  if (!matchId) {
+    return { error: "Match ID is required." };
+  }
+  if (!content) {
+    return { error: "Message cannot be empty." };
+  }
+  if (content.length > 500) {
+    return { error: "Message too long (max 500 characters)." };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated." };
+  }
+
+  // RLS enforces participant membership + auth.uid() = user_id.
+  const { data: saved, error: insertError } = await supabase
+    .from("match_chat_messages")
+    .insert({ match_id: matchId, user_id: user.id, content })
+    .select("id, match_id, user_id, content, created_at")
+    .single();
+
+  if (insertError) {
+    return { error: insertError.message };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username, display_name, avatar_id")
+    .eq("id", user.id)
+    .single();
+
+  const message = {
+    ...saved,
+    user: profile || { username: null, display_name: null, avatar_id: null },
+  };
+
+  // Broadcast on match-specific channel (no browser JWT needed).
+  await supabase.channel(`match-chat-${matchId}`).send({
+    type: "broadcast",
+    event: "new_message",
+    payload: { message },
+  });
+
+  return { success: true, message };
+}
+
+export async function deleteMatchMessage(formData) {
+  const supabase = await createClient();
+  const messageId = formData.get("messageId");
+  const matchId = formData.get("matchId");
+
+  if (!messageId || !matchId) {
+    return { error: "Message and match ID are required." };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated." };
+  }
+
+  // RLS enforces ownership + participant access.
+  const { data: deleted, error } = await supabase
+    .from("match_chat_messages")
+    .delete()
+    .eq("id", messageId)
+    .select("id")
+    .single();
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  if (!deleted?.id) {
+    return { error: "Message not found or you can only delete your own messages." };
+  }
+
+  await supabase.channel(`match-chat-${matchId}`).send({
+    type: "broadcast",
+    event: "message_deleted",
+    payload: { messageId: deleted.id },
+  });
+
+  revalidatePath(`/matches/${matchId}`);
+  return { success: true, messageId: deleted.id };
 }

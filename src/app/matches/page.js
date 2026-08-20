@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import BottomNav from "@/app/components/BottomNav";
 import Avatar from "@/app/components/Avatar";
 import { SwordsIcon } from "@/app/components/Icons";
+import JoinByCode from "@/app/components/JoinByCode";
 
 const STATUS_META = {
   pending: { label: "Pending", cls: "bg-yellow-500/15 text-yellow-400" },
@@ -56,6 +57,11 @@ export default async function MatchesPage() {
         </div>
       </header>
       <main className="mx-auto w-full max-w-lg px-4 pt-4">
+        {/* Join challenge by code */}
+        <div className="mb-4">
+          <JoinByCode />
+        </div>
+
         {matches?.length > 0 ? (
           <div className="flex flex-col gap-3">
             {matches.map((m) => {
