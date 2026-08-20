@@ -1,19 +1,13 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { logIn } from "@/app/actions/auth";
+import { useState } from "react";
+import { useActionState } from "react";
+import Link from "next/link";
+import { requestPasswordReset } from "@/app/actions/auth";
 import { FlameIcon } from "@/app/components/Icons";
 
-export default function LoginForm() {
-  const router = useRouter();
-  const [state, formAction, isPending] = useActionState(logIn, {});
-
-  useEffect(() => {
-    if (state?.success) {
-      router.push("/");
-    }
-  }, [state, router]);
+export default function ForgotPasswordPage() {
+  const [state, formAction, isPending] = useActionState(requestPasswordReset, {});
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4">
@@ -22,11 +16,9 @@ export default function LoginForm() {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/15 text-accent">
             <FlameIcon size={28} />
           </div>
-          <h1 className="mt-3 text-2xl font-extrabold text-white">
-            Streak<span className="text-accent">Partner</span>
-          </h1>
+          <h1 className="mt-3 text-2xl font-extrabold text-white">Forgot Password</h1>
           <p className="mt-1 text-sm text-slate-400">
-            Challenge players. Stake coins. Win matches.
+            Enter your email and we'll send you a reset link.
           </p>
         </div>
 
@@ -36,7 +28,7 @@ export default function LoginForm() {
           </div>
         )}
 
-        {state?.message && (
+        {state?.success && (
           <div className="mb-4 rounded-lg border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
             {state.message}
           </div>
@@ -51,33 +43,19 @@ export default function LoginForm() {
             autoComplete="email"
             className="h-12 w-full rounded-xl border border-line bg-night-800 px-4 text-white outline-none transition-colors placeholder:text-slate-500 focus:border-accent"
           />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            required
-            autoComplete="current-password"
-            className="h-12 w-full rounded-xl border border-line bg-night-800 px-4 text-white outline-none transition-colors placeholder:text-slate-500 focus:border-accent"
-          />
-          <div className="text-right">
-            <a href="/forgot-password" className="text-xs font-semibold text-accent hover:text-accent-soft">
-              Forgot password?
-            </a>
-          </div>
           <button
             type="submit"
             disabled={isPending}
             className="h-12 w-full rounded-xl bg-accent text-sm font-bold text-black transition-colors hover:bg-accent-soft disabled:opacity-50"
           >
-            {isPending ? "Logging in..." : "Log In"}
+            {isPending ? "Sending..." : "Send Reset Link"}
           </button>
         </form>
 
         <p className="mt-4 text-center text-sm text-slate-400">
-          No account?{" "}
-          <a href="/signup" className="font-bold text-accent hover:text-accent-soft transition-colors">
-            Sign up
-          </a>
+          <Link href="/login" className="font-bold text-accent hover:text-accent-soft">
+            Back to login
+          </Link>
         </p>
       </div>
     </div>

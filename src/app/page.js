@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { logOut } from "@/app/actions/auth";
 import { createMatch, acceptMatch } from "@/app/actions/matches";
 import NotificationBell from "@/app/components/NotificationBell";
+import CreateMatchPanel from "@/app/components/CreateMatchPanel";
 import BottomNav from "@/app/components/BottomNav";
 import {
   FlameIcon, CoinIcon, CheckIcon, PlusIcon, LogoutIcon, FireIcon,
@@ -130,28 +131,8 @@ export default async function Dashboard() {
             </div>
           </div>
           <div className="mt-2 g-card p-4">
-            {players?.length === 0 ? (
-              <p className="rounded-lg bg-night-800 px-4 py-3 text-center text-xs text-slate-400">
-                No other players yet. Ask a friend to sign up!
-              </p>
-            ) : (
-              <form action={createMatch} className="flex gap-2">
-                <select name="opponentId" required defaultValue=""
-                  className="h-12 flex-1 rounded-xl border border-line bg-night-800 px-3 text-sm text-white outline-none focus:border-accent transition-colors">
-                  <option value="" disabled>Select opponent</option>
-                  {players?.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-night-900">
-                      @{p.username}
-                      {p.display_name && p.display_name !== p.username ? ` (${p.display_name})` : ""}
-                    </option>
-                  ))}
-                </select>
-                <button type="submit"
-                  className="flex h-12 items-center gap-1.5 whitespace-nowrap rounded-xl bg-accent px-4 text-sm font-bold text-black hover:bg-accent-soft transition-colors">
-                  <PlusIcon size={16} /> Challenge
-                </button>
-              </form>
-            )}
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Search Opponent</p>
+            <CreateMatchPanel />
             <p className="mt-3 text-[11px] text-slate-500">
               Stakes: <span className="text-accent">5 PromptCoin</span> each · Pot: <span className="text-white">10 PromptCoin</span>
             </p>

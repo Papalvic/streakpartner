@@ -4,6 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+function getAppOrigin() {
+  // Environment-aware: production uses the deployed Vercel URL, dev stays localhost.
+  const deployed = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL;
+  if (deployed) {
+    return deployed.startsWith("http") ? deployed : `https://${deployed}`;
+  }
+  return "http://localhost:3000";
+}
+
 export async function signUp(prevState, formData) {
   const supabase = await createClient();
 
@@ -26,6 +35,8 @@ export async function signUp(prevState, formData) {
     email,
     password,
     options: {
+      // Redirect back to the deployed app (never default localhost) after email verification.
+      emailRedirectTo: `${getAppOrigin()}/login`,
       data: {
         username: username.toLowerCase().replace(/\s+/g, "_"),
         display_name: displayName || username,
@@ -41,19 +52,14 @@ export async function signUp(prevState, formData) {
   // requires the user to click the confirmation link before logging in.
   if (data?.session) {
     // Confirmation is disabled — user is already authenticated (profile trigger ran).
-    // If an invitation code was supplied, apply the referral server-side (atomic, idempotent).
     if (inviteCode) {
-      const { data: referralResult, error: referralError } = await supabase.rpc("apply_referral_code", {
-        p_code: inviteCode,
-      });
-      // Ignore errors; invalid codes simply award nothing. Notifications cover success.
+      await supabase.rpc("apply_referral_code", { p_code: inviteCode });
     }
     revalidatePath("/", "layout");
     redirect("/");
   }
 
   // Confirmation is enabled — user must verify their email first.
-  // Referral cannot be applied now (no session). Return success message.
   return {
     success: true,
     message:
@@ -80,11 +86,7 @@ export async function logIn(prevState, formData) {
     return { error: error.message };
   }
 
-  // IMPORTANT FIX: Force the auth session cookies to be written to the
-  // response by reading the session back before redirecting. Without this,
-  // the cookies set by signInWithPassword can be dropped when redirect() is
-  // called in the same Server Action, leaving the user unauthenticated
-  // after navigating to "/".
+  // Force the auth session cookies to be written before redirecting.
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -97,6 +99,48 @@ export async function logIn(prevState, formData) {
 
   revalidatePath("/", "layout");
   redirect("/");
+}
+
+export async function requestPasswordReset(prevState, formData) {
+  const supabase = await createClient();
+  const email = String(formData.get("email") || "").trim();
+
+  if (!email) {
+    return { error: "Email is required." };
+  }
+
+  // Always return the same generic response regardless of whether the email exists.
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${getAppOrigin()}/reset-password`,
+  });
+
+  return {
+    success: true,
+    message: "If that email is registered, a password reset link has been sent.",
+  };
+}
+
+export async function resetPassword(prevState, formData) {
+  const supabase = await createClient();
+  const password = formData.get("password");
+  const confirm = formData.get("confirmPassword");
+
+  if (!password || !confirm) {
+    return { error: "Please fill in both password fields." };
+  }
+  if (password.length < 6) {
+    return { error: "Password must be at least 6 characters." };
+  }
+  if (password !== confirm) {
+    return { error: "Passwords do not match." };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true, message: "Password updated successfully." };
 }
 
 export async function logOut() {
