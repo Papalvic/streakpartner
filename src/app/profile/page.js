@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logOut } from "@/app/actions/auth";
 import BottomNav from "@/app/components/BottomNav";
@@ -109,7 +110,7 @@ export default async function ProfilePage() {
                 const opp = getOpp(m);
                 const won = m.winner_id === user.id;
                 return (
-                  <div key={m.id} className="g-card-press flex items-center justify-between rounded-xl px-4 py-3">
+                  <Link key={m.id} href={`/matches/${m.id}`} className="g-card-press flex items-center justify-between rounded-xl px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
                         {won ? "W" : "L"}
@@ -122,7 +123,7 @@ export default async function ProfilePage() {
                     <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
                       {won ? "WON" : "LOST"} · {won ? `+${m.stake * 2}` : `-${m.stake}`}
                     </span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

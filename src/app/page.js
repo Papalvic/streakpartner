@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logOut } from "@/app/actions/auth";
-import { createMatch, acceptMatch, settleMatch } from "@/app/actions/matches";
+import { createMatch, acceptMatch } from "@/app/actions/matches";
 import BottomNav from "@/app/components/BottomNav";
 import {
   FlameIcon, CoinIcon, CheckIcon, PlusIcon, LogoutIcon, FireIcon,
@@ -175,13 +176,18 @@ export default async function Dashboard() {
                         <p className="truncate font-semibold text-white">{opp?.display_name || opp?.username || "Player"}</p>
                         <p className="text-xs text-slate-400">@{opp?.username || "unknown"} · stake {m.stake} coins</p>
                       </div>
-                      <form action={acceptMatch}>
-                        <input type="hidden" name="matchId" value={m.id} />
-                        <button type="submit"
-                          className="flex items-center gap-1 rounded-xl bg-accent px-4 py-2 text-xs font-bold text-black hover:bg-accent-soft transition-colors">
-                          <CheckIcon size={14} /> Accept
-                        </button>
-                      </form>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/matches/${m.id}`} className="rounded-xl border border-line bg-night-800 px-3 py-2 text-xs font-bold text-slate-300 hover:text-white">
+                          View
+                        </Link>
+                        <form action={acceptMatch}>
+                          <input type="hidden" name="matchId" value={m.id} />
+                          <button type="submit"
+                            className="flex items-center gap-1 rounded-xl bg-accent px-4 py-2 text-xs font-bold text-black hover:bg-accent-soft transition-colors">
+                            <CheckIcon size={14} /> Accept
+                          </button>
+                        </form>
+                      </div>
                     </div>
                   </div>
                 );
@@ -197,10 +203,9 @@ export default async function Dashboard() {
             <div className="flex flex-col gap-3">
               {activeMatches.map((m) => {
                 const opp = getOpp(m);
-                const role = isChallenger(m);
                 return (
-                  <div key={m.id} className="g-card overflow-hidden">
-                    <div className="flex items-center justify-between p-4 pb-3">
+                  <Link key={m.id} href={`/matches/${m.id}`} className="g-card-press block overflow-hidden">
+                    <div className="flex items-center justify-between p-4">
                       <div className="flex items-center gap-3">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-bold text-accent">
                           {opp?.display_name?.[0] || opp?.username?.[0] || "?"}
@@ -212,26 +217,10 @@ export default async function Dashboard() {
                       </div>
                       <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold text-accent">LIVE</span>
                     </div>
-                    <form action={settleMatch} className="border-t border-line p-4">
-                      <input type="hidden" name="matchId" value={m.id} />
-                      <div className="grid grid-cols-2 gap-3">
-                        <label className="block">
-                          <span className="mb-1 block text-xs font-medium text-slate-400">Your score</span>
-                          <input type="number" name={role ? "challengerScore" : "opponentScore"} min="0" required placeholder="0"
-                            className="h-11 w-full rounded-xl border border-line bg-night-800 px-3 text-sm text-white outline-none focus:border-accent transition-colors" />
-                        </label>
-                        <label className="block">
-                          <span className="mb-1 block text-xs font-medium text-slate-400">Opponent score</span>
-                          <input type="number" name={role ? "opponentScore" : "challengerScore"} min="0" required placeholder="0"
-                            className="h-11 w-full rounded-xl border border-line bg-night-800 px-3 text-sm text-white outline-none focus:border-accent transition-colors" />
-                        </label>
-                      </div>
-                      <button type="submit"
-                        className="mt-3 h-11 w-full rounded-xl bg-accent text-sm font-bold text-black hover:bg-accent-soft transition-colors">
-                        Submit Result & Claim Pot
-                      </button>
-                    </form>
-                  </div>
+                    <div className="border-t border-line px-4 py-3 text-center text-xs font-semibold text-accent">
+                      Open Match Room →
+                    </div>
+                  </Link>
                 );
               })}
             </div>
@@ -250,7 +239,7 @@ export default async function Dashboard() {
                 const opp = getOpp(m);
                 const won = m.winner_id === user.id;
                 return (
-                  <div key={m.id} className="g-card-press flex items-center justify-between rounded-xl px-4 py-3">
+                  <Link key={m.id} href={`/matches/${m.id}`} className="g-card-press flex items-center justify-between rounded-xl px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
                         {won ? "W" : "L"}
@@ -263,7 +252,7 @@ export default async function Dashboard() {
                     <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
                       {won ? "WON" : "LOST"} · {won ? `+${m.stake * 2}` : `-${m.stake}`}
                     </span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

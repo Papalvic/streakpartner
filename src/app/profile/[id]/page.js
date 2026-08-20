@@ -92,7 +92,7 @@ export default async function PublicProfilePage({ params }) {
                 const opp = getOpp(m);
                 const won = m.winner_id === id;
                 return (
-                  <div key={m.id} className="g-card-press flex items-center justify-between rounded-xl px-4 py-3">
+                  <Link key={m.id} href={`/matches/${m.id}`} className="g-card-press flex items-center justify-between rounded-xl px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
                         {won ? "W" : "L"}
@@ -107,7 +107,7 @@ export default async function PublicProfilePage({ params }) {
                     <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
                       {won ? "WON" : "LOST"} · {won ? `+${m.stake * 2}` : `-${m.stake}`}
                     </span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

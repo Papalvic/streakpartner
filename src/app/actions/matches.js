@@ -3,6 +3,83 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+export async function uploadMatchScreenshot(formData) {
+  const supabase = await createClient();
+  const matchId = formData.get("matchId");
+  const file = formData.get("screenshot");
+
+  if (!matchId) {
+    return { error: "Match ID is required." };
+  }
+
+  if (!file || !file.size) {
+    return { error: "Screenshot proof is required." };
+  }
+
+  // Only allow image files.
+  const type = String(file.type || "");
+  if (!type.startsWith("image/")) {
+    return { error: "Screenshot must be an image file." };
+  }
+
+  // 5 MB max.
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: "Screenshot too large (max 5 MB)." };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Not authenticated." };
+  }
+
+  // Verify the user is a participant of this match and the match is accepted.
+  const { data: match, error: matchError } = await supabase
+    .from("matches")
+    .select("challenger_id, opponent_id, status")
+    .eq("id", matchId)
+    .single();
+
+  if (matchError || !match) {
+    return { error: "Match not found." };
+  }
+
+  if (user.id !== match.challenger_id && user.id !== match.opponent_id) {
+    return { error: "Only match participants can submit results." };
+  }
+
+  if (match.status !== "accepted") {
+    return { error: "Match must be accepted before submitting a result." };
+  }
+
+  // Upload to the existing secure match-proofs bucket (server-side, not public-writable).
+  const ext = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "png";
+  const safeExt = "png|jpg|jpeg|webp|gif".includes(ext) ? ext : "png";
+  const path = `${matchId}/${user.id}-${Date.now()}.${safeExt}`;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const { error: uploadError } = await supabase.storage
+    .from("match-proofs")
+    .upload(path, arrayBuffer, { contentType: file.type, upsert: false });
+
+  if (uploadError) {
+    return { error: uploadError.message };
+  }
+
+  // Return a signed URL (expires in 1 hour) for immediate use/display.
+  const { data: signed, error: signError } = await supabase.storage
+    .from("match-proofs")
+    .createSignedUrl(path, 3600);
+
+  if (signError) {
+    return { error: signError.message };
+  }
+
+  return { success: true, screenshotUrl: signed.signedUrl, storagePath: path };
+}
+
 export async function createMatch(formData) {
   const supabase = await createClient();
   const opponentId = formData.get("opponentId");
@@ -48,19 +125,25 @@ export async function settleMatch(formData) {
   const matchId = formData.get("matchId");
   const pageChallengerScore = Number(formData.get("challengerScore"));
   const pageOpponentScore = Number(formData.get("opponentScore"));
-  const screenshotUrl = formData.get("screenshotUrl") || "manual";
+  const screenshotUrl = formData.get("screenshotUrl");
 
   if (!matchId) {
     return { error: "Match ID is required." };
   }
 
+  // Scores must be integers >= 0.
   if (
-    isNaN(pageChallengerScore) ||
-    isNaN(pageOpponentScore) ||
+    !Number.isInteger(pageChallengerScore) ||
+    !Number.isInteger(pageOpponentScore) ||
     pageChallengerScore < 0 ||
     pageOpponentScore < 0
   ) {
-    return { error: "Scores must be valid non-negative numbers." };
+    return { error: "Scores must be whole numbers 0 or greater." };
+  }
+
+  // Screenshot proof is required.
+  if (!screenshotUrl || screenshotUrl === "manual") {
+    return { error: "Screenshot proof is required to submit a result." };
   }
 
   // IMPORTANT: Fetch the match to correctly map scores to challenger/opponent
