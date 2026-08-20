@@ -26,12 +26,13 @@ export default async function TournamentsPage() {
     .eq("id", user.id)
     .single();
 
-  // Fetch all tournaments with creator info
+  // Fetch all tournaments with creator + winner info
   const { data: tournaments } = await supabase
     .from("tournaments")
     .select(
       `id, name, size, entry_fee, status, current_players, winner_id, created_at,
-       creator:profiles!tournaments_creator_id_fkey(username, display_name)`
+       creator:profiles!tournaments_creator_id_fkey(username, display_name),
+       winner:profiles!tournaments_winner_id_fkey(username, display_name)`
     )
     .order("created_at", { ascending: false });
 
@@ -179,6 +180,13 @@ export default async function TournamentsPage() {
                       <p className="text-[9px] uppercase tracking-wide text-slate-500">Prize Pool</p>
                     </div>
                   </div>
+
+                  {/* Completed winner */}
+                  {t.status === "completed" && t.winner && (
+                    <p className="mt-2 text-xs font-semibold text-accent">
+                      Winner: @{t.winner.display_name || t.winner.username}
+                    </p>
+                  )}
 
                   {/* Players progress */}
                   <div className="mt-3">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { joinTournament } from "@/app/actions/tournaments";
 import BottomNav from "@/app/components/BottomNav";
+import Avatar from "@/app/components/Avatar";
 import { TournamentIcon, PlusIcon, CheckIcon, ChatIcon } from "@/app/components/Icons";
 import TournamentChat from "@/app/components/TournamentChat";
 
@@ -47,14 +48,14 @@ export default async function TournamentDetailPage({ params }) {
     .eq("tournament_id", id)
     .order("seed", { ascending: true });
 
-  // Fetch bracket matches
+  // Fetch bracket matches (with avatars + scores)
   const { data: bracketMatches } = await supabase
     .from("tournament_matches")
     .select(
-      `id, round, match_index, status, winner_id,
+      `id, round, match_index, status, winner_id, player1_score, player2_score, is_draw,
        player1_id, player2_id,
-       player1:profiles!tournament_matches_player1_id_fkey(username, display_name),
-       player2:profiles!tournament_matches_player2_id_fkey(username, display_name)`
+       player1:profiles!tournament_matches_player1_id_fkey(username, display_name, avatar_id),
+       player2:profiles!tournament_matches_player2_id_fkey(username, display_name, avatar_id)`
     )
     .eq("tournament_id", id)
     .order("round", { ascending: true })
@@ -88,6 +89,14 @@ export default async function TournamentDetailPage({ params }) {
   });
 
   const roundsList = Object.keys(rounds).sort((a, b) => Number(a) - Number(b));
+
+  // Find the user's next match (pending round-1 or in-progress match with both players set)
+  const myMatches = bracketMatches?.filter(
+    (m) => m.player1_id === user.id || m.player2_id === user.id
+  );
+  const nextMatch = myMatches?.find((m) => m.status === "pending" && m.player1_id && m.player2_id);
+  const nextOppId = nextMatch ? (nextMatch.player1_id === user.id ? nextMatch.player2_id : nextMatch.player1_id) : null;
+  const nextOpp = nextMatch ? (nextOppId === nextMatch.player1_id ? nextMatch.player1 : nextMatch.player2) : null;
 
   return (
     <div className="min-h-screen pb-24">
@@ -177,6 +186,26 @@ export default async function TournamentDetailPage({ params }) {
           </div>
         </section>
 
+        {/* YOUR TOURNAMENT — next match experience */}
+        {isJoined && nextMatch && (
+          <section className="mt-5 g-card relative overflow-hidden rounded-2xl p-4">
+            <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-accent/10 blur-2xl" />
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-accent">Your Tournament</p>
+            <p className="mt-1 text-sm text-slate-300">
+              Next match:{" "}
+              <span className="font-bold text-white">
+                vs {nextOpp?.display_name || nextOpp?.username || "Player"}
+              </span>
+            </p>
+            <Link
+              href={`/tournaments/${tournament.id}/matches/${nextMatch.id}`}
+              className="mt-3 flex h-11 w-full items-center justify-center rounded-xl bg-accent text-sm font-bold text-black hover:bg-accent-soft"
+            >
+              Open Match
+            </Link>
+          </section>
+        )}
+
         {/* Tournament Chat (participants only) */}
         {isJoined && (
           <section className="mt-5">
@@ -259,28 +288,32 @@ export default async function TournamentDetailPage({ params }) {
                     </h3>
                     <div className="flex flex-col gap-2">
                       {matchesInRound.map((m) => {
-                        const p1 = m.player1?.display_name || m.player1?.username;
-                        const p2 = m.player2?.display_name || m.player2?.username;
+                        const p1Name = m.player1?.display_name || m.player1?.username;
+                        const p2Name = m.player2?.display_name || m.player2?.username;
                         const p1Won = m.winner_id === m.player1_id;
                         const p2Won = m.winner_id === m.player2_id;
+                        const showScore = m.status === "completed" && m.player1_score !== null;
                         return (
-                          <div key={m.id} className="g-card rounded-xl p-3">
+                          <Link key={m.id} href={`/tournaments/${tournament.id}/matches/${m.id}`} className="g-card-press block rounded-xl p-3">
                             <div className="flex flex-col gap-1.5">
-                              <div className={`flex items-center justify-between rounded-lg px-3 py-1.5 ${p1Won ? "bg-accent/10 text-accent" : "bg-night-800 text-slate-300"}`}>
-                                <span className="truncate text-sm font-medium">
-                                  {p1 || "Waiting for player"}
-                                </span>
+                              <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${p1Won ? "bg-accent/10 text-accent" : "bg-night-800 text-slate-300"}`}>
+                                <Avatar avatarId={m.player1?.avatar_id} size={24} className="shrink-0" />
+                                <span className="min-w-0 flex-1 truncate text-sm font-medium">{p1Name || "Waiting for player"}</span>
+                                {m.status === "completed" && !m.is_draw && <span className="shrink-0 text-sm font-black">{m.player1_score ?? ""}</span>}
                                 {p1Won && <span className="shrink-0 text-[10px] font-bold">WINNER</span>}
                               </div>
-                              <div className="text-center text-[10px] text-slate-600">VS</div>
-                              <div className={`flex items-center justify-between rounded-lg px-3 py-1.5 ${p2Won ? "bg-accent/10 text-accent" : "bg-night-800 text-slate-300"}`}>
-                                <span className="truncate text-sm font-medium">
-                                  {p2 || "Waiting for player"}
-                                </span>
+                              <div className="flex items-center justify-center gap-2 text-[10px] text-slate-600">
+                                <span>VS</span>
+                                {m.is_draw && <span className="font-bold text-blue-400">DRAW</span>}
+                              </div>
+                              <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${p2Won ? "bg-accent/10 text-accent" : "bg-night-800 text-slate-300"}`}>
+                                <Avatar avatarId={m.player2?.avatar_id} size={24} className="shrink-0" />
+                                <span className="min-w-0 flex-1 truncate text-sm font-medium">{p2Name || "Waiting for player"}</span>
+                                {m.status === "completed" && !m.is_draw && <span className="shrink-0 text-sm font-black">{m.player2_score ?? ""}</span>}
                                 {p2Won && <span className="shrink-0 text-[10px] font-bold">WINNER</span>}
                               </div>
                             </div>
-                          </div>
+                          </Link>
                         );
                       })}
                     </div>

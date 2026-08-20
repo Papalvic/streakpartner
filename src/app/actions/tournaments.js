@@ -4,6 +4,51 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+export async function submitTournamentMatchResult(formData) {
+  const supabase = await createClient();
+  const matchId = formData.get("matchId");
+  const player1Score = Number(formData.get("player1Score"));
+  const player2Score = Number(formData.get("player2Score"));
+  const screenshotUrl = formData.get("screenshotUrl") || null;
+
+  if (!matchId) {
+    return { error: "Match ID is required." };
+  }
+
+  // Scores must be integers >= 0. Draw is allowed (handled by the RPC).
+  if (
+    !Number.isInteger(player1Score) ||
+    !Number.isInteger(player2Score) ||
+    player1Score < 0 ||
+    player2Score < 0
+  ) {
+    return { error: "Scores must be whole numbers 0 or greater." };
+  }
+
+  const { error } = await supabase.rpc("submit_tournament_match_result", {
+    p_match_id: matchId,
+    p_player1_score: player1Score,
+    p_player2_score: player2Score,
+    p_screenshot_url: screenshotUrl,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  // Fetch the match to know which tournament to revalidate.
+  const { data: match } = await supabase
+    .from("tournament_matches")
+    .select("tournament_id")
+    .eq("id", matchId)
+    .single();
+
+  if (match?.tournament_id) {
+    revalidatePath(`/tournaments/${match.tournament_id}`);
+  }
+  return { success: true };
+}
+
 export async function createTournament(formData) {
   const supabase = await createClient();
   const name = formData.get("name");
