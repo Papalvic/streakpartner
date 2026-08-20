@@ -123,12 +123,27 @@ export default async function TournamentMatchRoomPage({ params }) {
           </section>
         )}
 
-        {/* Result display for completed */}
+        {/* Result display for completed — actual player names + scores */}
         {match.status === "completed" && (
           <section className="mt-4 g-card rounded-2xl p-4 text-center">
-            <p className={`text-sm font-semibold ${winnerId === user.id ? "text-accent" : "text-red-400"}`}>
-              {winnerId === user.id ? "You won — advancing!" : "Opponent won — advancing."}
-            </p>
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-sm font-bold text-white">
+                {match.player1?.display_name || match.player1?.username || "Player 1"}
+              </span>
+              <span className="text-lg font-black text-white">
+                {match.player1_score} — {match.player2_score}
+              </span>
+              <span className="text-sm font-bold text-white">
+                {match.player2?.display_name || match.player2?.username || "Player 2"}
+              </span>
+            </div>
+            {winnerId && (
+              <p className={`mt-2 text-sm font-semibold ${winnerId === user.id ? "text-accent" : "text-slate-300"}`}>
+                {winnerId === match.player1_id
+                  ? `${match.player1?.display_name || match.player1?.username || "Player 1"} wins — advances to the next round.`
+                  : `${match.player2?.display_name || match.player2?.username || "Player 2"} wins — advances to the next round.`}
+              </p>
+            )}
           </section>
         )}
 

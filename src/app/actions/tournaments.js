@@ -4,6 +4,73 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+export async function uploadTournamentMatchScreenshot(formData) {
+  const supabase = await createClient();
+  const matchId = formData.get("matchId");
+  const file = formData.get("screenshot");
+
+  if (!matchId) {
+    return { error: "Match ID is required." };
+  }
+  if (!file || !file.size) {
+    return { error: "Screenshot proof is required." };
+  }
+
+  const type = String(file.type || "");
+  if (!type.startsWith("image/")) {
+    return { error: "Screenshot must be an image file." };
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    return { error: "Screenshot too large (max 5 MB)." };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Not authenticated." };
+  }
+
+  const { data: match, error: matchError } = await supabase
+    .from("tournament_matches")
+    .select("player1_id, player2_id, status")
+    .eq("id", matchId)
+    .single();
+
+  if (matchError || !match) {
+    return { error: "Tournament match not found." };
+  }
+  if (user.id !== match.player1_id && user.id !== match.player2_id) {
+    return { error: "Only tournament match participants can submit results." };
+  }
+  if (match.status !== "pending") {
+    return { error: "Match is not pending for submission." };
+  }
+
+  const ext = file.name.includes(".") ? file.name.split(".").pop().toLowerCase() : "png";
+  const safeExt = "png|jpg|jpeg|webp|gif".includes(ext) ? ext : "png";
+  const path = `tournament/${matchId}/${user.id}-${Date.now()}.${safeExt}`;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const { error: uploadError } = await supabase.storage
+    .from("match-proofs")
+    .upload(path, arrayBuffer, { contentType: file.type, upsert: false });
+
+  if (uploadError) {
+    return { error: uploadError.message };
+  }
+
+  const { data: signed, error: signError } = await supabase.storage
+    .from("match-proofs")
+    .createSignedUrl(path, 3600);
+
+  if (signError) {
+    return { error: signError.message };
+  }
+
+  return { success: true, screenshotUrl: signed.signedUrl };
+}
+
 export async function submitTournamentMatchResult(formData) {
   const supabase = await createClient();
   const matchId = formData.get("matchId");
