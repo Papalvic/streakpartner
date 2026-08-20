@@ -9,6 +9,8 @@ declare v_t record; v_m record; v_w uuid; v_prize integer; v_bal integer; v_slot
 begin
   if auth.uid() is null then raise exception 'Not authenticated'; end if;
   if p_player1_score is null or p_player2_score is null or p_player1_score<0 or p_player2_score<0 then raise exception 'Scores must be non-negative integers'; end if;
+  -- TOURNAMENT screenshots are REQUIRED (server-enforced). Normal 1v1 remains optional.
+  if p_screenshot_url is null or p_screenshot_url = '' then raise exception 'Screenshot proof is required for tournament matches'; end if;
   select * into v_m from public.tournament_matches where id=p_match_id for update;
   if v_m.id is null then raise exception 'Tournament match not found'; end if;
   select * into v_t from public.tournaments where id=v_m.tournament_id for update;
