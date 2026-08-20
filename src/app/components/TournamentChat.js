@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import Avatar from "@/app/components/Avatar";
 import { supabase } from "@/lib/supabase/client";
 import { deleteTournamentMessage, sendTournamentMessage } from "@/app/actions/chat";
 
@@ -90,18 +92,24 @@ export default function TournamentChat({ tournamentId, currentUserId, initialMes
         ) : (
           messages.map((m) => {
             const mine = m.user_id === currentUserId;
-            const name = m.user?.display_name || m.user?.username || "Player";
+            const displayName = m.user?.display_name || m.user?.username || "Player";
             return (
-              <div key={m.id} className={`mb-2 flex w-full ${mine ? "justify-end" : "justify-start"}`}>
+              <div key={m.id} className={`mb-3 flex w-full ${mine ? "justify-end" : "justify-start"}`}>
+                {!mine && (
+                  <Link href={`/profile/${m.user_id}`} className="mr-2 shrink-0 self-end">
+                    <Avatar avatarId={m.user?.avatar_id} size={30} className="rounded-xl" />
+                  </Link>
+                )}
                 <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${
                   mine
-                    ? "border border-accent/30 bg-accent/20 rounded-br-sm"
+                    ? "border border-accent/30 bg-accent/20 rounded-br-sm text-right"
                     : "border border-line bg-night-800 rounded-bl-sm"
                 }`}>
-                  <div className={`mb-0.5 flex items-baseline gap-2 ${mine ? "justify-end" : ""}`}>
-                    <span className={`text-[10px] font-bold ${mine ? "text-accent" : "text-slate-400"}`}>
-                      {mine ? "You" : name}
-                    </span>
+                  <div className={`mb-0.5 flex flex-wrap items-baseline gap-2 ${mine ? "justify-end" : "justify-start"}`}>
+                    <Link href={`/profile/${m.user_id}`} className="inline-flex items-center gap-1 hover:underline">
+                      <span className={`text-[11px] font-bold ${mine ? "text-accent" : "text-white"}`}>{mine ? "You" : displayName}</span>
+                      {!mine && <span className="text-[9px] text-slate-500">@{m.user?.username}</span>}
+                    </Link>
                     <span className="text-[9px] text-slate-500">{fmt(m.created_at)}</span>
                   </div>
                   <p className="break-words text-sm text-white">{m.content}</p>

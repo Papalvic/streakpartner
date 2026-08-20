@@ -14,10 +14,24 @@ const STATUS_META = {
   disputed: { label: "Disputed", cls: "bg-orange-500/15 text-orange-400" },
 };
 
-export default async function MatchesPage() {
+const PAGE_SIZE = 20;
+
+export default async function MatchesPage({ searchParams }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // Real range-based pagination (not just a fixed limit).
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params?.page) || 1);
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  // Count total matching rows for pagination.
+  const { count } = await supabase
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`);
 
   const { data: matches } = await supabase
     .from("matches")
@@ -28,7 +42,7 @@ export default async function MatchesPage() {
     )
     .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .range(from, to);
 
   // Fetch scores for completed matches.
   const completedIds = (matches || []).filter((m) => m.status === "completed").map((m) => m.id);

@@ -5,6 +5,7 @@ import { logOut } from "@/app/actions/auth";
 import { createMatch, acceptMatch } from "@/app/actions/matches";
 import NotificationBell from "@/app/components/NotificationBell";
 import CreateMatchPanel from "@/app/components/CreateMatchPanel";
+import Avatar from "@/app/components/Avatar";
 import BottomNav from "@/app/components/BottomNav";
 import {
   FlameIcon, CoinIcon, CheckIcon, PlusIcon, LogoutIcon, FireIcon,
@@ -39,9 +40,9 @@ async function getDashboardData() {
 
   const { data: leaderboard } = await supabase
     .from("profiles")
-    .select("id, username, display_name, wins")
+    .select("id, username, display_name, wins, avatar_id")
     .order("wins", { ascending: false })
-    .limit(10);
+    .limit(5);
 
   return { user, profile, players, matches, leaderboard };
 }
@@ -224,20 +225,29 @@ export default async function Dashboard() {
                 const opp = getOpp(m);
                 const won = m.winner_id === user.id;
                 return (
-                  <Link key={m.id} href={`/matches/${m.id}`} className="g-card-press flex items-center justify-between rounded-xl px-4 py-3">
+                  <div key={m.id} className="g-card-press flex items-center justify-between rounded-xl px-3 py-3">
                     <div className="flex items-center gap-3">
                       <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
                         {won ? "W" : "L"}
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-white">vs {opp?.display_name || opp?.username || "Player"}</p>
-                        <p className="text-[11px] text-slate-500">{new Date(m.created_at).toLocaleDateString()}</p>
-                      </div>
+                      {/* Opponent identity links to profile */}
+                      <Link href={`/profile/${opp?.id}`} className="flex items-center gap-2 hover:underline">
+                        <Avatar avatarId={opp?.avatar_id} size={30} className="rounded-xl" />
+                        <span>
+                          <span className="block text-sm font-semibold text-white">{opp?.display_name || opp?.username || "Player"}</span>
+                          <span className="block text-[10px] text-slate-500">@{opp?.username} · {new Date(m.created_at).toLocaleDateString()}</span>
+                        </span>
+                      </Link>
                     </div>
-                    <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
-                      {won ? "WON" : "LOST"} · {won ? `+${m.stake * 2}` : `-${m.stake}`}
-                    </span>
-                  </Link>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
+                        {won ? "WON" : "LOST"} · {won ? `+${m.stake * 2}` : `-${m.stake}`}
+                      </span>
+                      <Link href={`/matches/${m.id}`} className="rounded-lg border border-line bg-night-800 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:text-white">
+                        View
+                      </Link>
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -267,14 +277,17 @@ export default async function Dashboard() {
                       idx === 2 ? "bg-orange-500/20 text-orange-400" : "bg-night-700 text-slate-400"}`}>
                       {idx + 1}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">
-                        {me ? "You" : p.display_name || p.username}
-                        {me && <span className="ml-1.5 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">YOU</span>}
-                      </p>
-                      <p className="text-[11px] text-slate-500">@{p.username}</p>
-                    </div>
-                    <div className="text-right">
+                    <Link href={`/profile/${p.id}`} className="flex items-center gap-2 hover:underline">
+                      <Avatar avatarId={p.avatar_id} size={30} className="shrink-0 rounded-xl" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-white">
+                          {me ? "You" : p.display_name || p.username}
+                          {me && <span className="ml-1.5 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">YOU</span>}
+                        </p>
+                        <p className="text-[11px] text-slate-500">@{p.username}</p>
+                      </div>
+                    </Link>
+                    <div className="ml-auto text-right">
                       <p className="text-sm font-bold text-white">{p.wins}</p>
                       <p className="text-[10px] text-slate-500">wins</p>
                     </div>
