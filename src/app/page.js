@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logOut } from "@/app/actions/auth";
 import { createMatch, acceptMatch } from "@/app/actions/matches";
+import NotificationBell from "@/app/components/NotificationBell";
 import BottomNav from "@/app/components/BottomNav";
 import {
   FlameIcon, CoinIcon, CheckIcon, PlusIcon, LogoutIcon, FireIcon,
@@ -78,13 +79,16 @@ export default async function Dashboard() {
               </p>
             </div>
           </div>
-          <form action={logOut}>
-            <button type="submit"
-              className="flex items-center gap-1.5 rounded-lg border border-line bg-night-800 px-3 py-2 text-xs font-medium text-slate-300 hover:border-line-light hover:text-white transition-colors">
-              <LogoutIcon size={15} />
-              Logout
-            </button>
-          </form>
+          <div className="flex items-center gap-2">
+            <NotificationBell currentUserId={user.id} />
+            <form action={logOut}>
+              <button type="submit"
+                className="flex items-center gap-1.5 rounded-lg border border-line bg-night-800 px-3 py-2 text-xs font-medium text-slate-300 hover:border-line-light hover:text-white transition-colors">
+                <LogoutIcon size={15} />
+                Logout
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 

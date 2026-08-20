@@ -80,6 +80,18 @@ export default function SignupForm() {
             minLength={6}
             className="h-12 w-full rounded-xl border border-line bg-night-800 px-4 text-white outline-none transition-colors placeholder:text-slate-500 focus:border-accent"
           />
+          <div>
+            <input
+              type="text"
+              name="inviteCode"
+              placeholder="Enter invitation code (optional)"
+              autoComplete="off"
+              className="h-12 w-full rounded-xl border border-line bg-night-800 px-4 text-white outline-none transition-colors placeholder:text-slate-500 focus:border-accent"
+            />
+            <p className="mt-1 text-[11px] text-slate-500">
+              Have a friend's code? You both get +50 PromptCoin.
+            </p>
+          </div>
           <button
             type="submit"
             disabled={isPending}

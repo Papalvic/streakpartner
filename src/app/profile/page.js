@@ -5,6 +5,7 @@ import { logOut } from "@/app/actions/auth";
 import BottomNav from "@/app/components/BottomNav";
 import Avatar from "@/app/components/Avatar";
 import AvatarPicker from "@/app/components/AvatarPicker";
+import ReferralSection from "@/app/components/ReferralSection";
 import { UserIcon, CoinIcon, LogoutIcon } from "@/app/components/Icons";
 
 export default async function ProfilePage() {
@@ -40,6 +41,21 @@ export default async function ProfilePage() {
 
   const isChallenger = (m) => m.challenger_id === user.id;
   const getOpp = (m) => (isChallenger(m) ? m.opponent : m.challenger);
+
+  // Referral data
+  const referralCode = profile?.referral_code || "";
+  const { data: referralTxns } = await supabase
+    .from("coin_transactions")
+    .select("amount")
+    .eq("player_id", user.id)
+    .eq("type", "referral_bonus");
+  const referralEarnings = (referralTxns || []).reduce((s, t) => s + (t.amount || 0), 0);
+
+  const { data: referralHistory } = await supabase
+    .from("referrals")
+    .select("referred_user_id, referred_user:profiles!referrals_referred_user_id_fkey(username, display_name, avatar_id)")
+    .eq("referrer_id", user.id)
+    .order("created_at", { ascending: false });
 
   return (
     <div className="min-h-screen pb-24">
@@ -142,6 +158,13 @@ export default async function ProfilePage() {
             <AvatarPicker currentAvatarId={profile?.avatar_id || "gamer-1"} />
           </div>
         </section>
+
+        {/* INVITE & EARN */}
+        <ReferralSection
+          referralCode={referralCode}
+          referralEarnings={referralEarnings}
+          referralHistory={referralHistory || []}
+        />
       </main>
 
       <BottomNav active="profile" />

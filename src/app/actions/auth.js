@@ -11,6 +11,8 @@ export async function signUp(prevState, formData) {
   const password = formData.get("password");
   const username = formData.get("username");
   const displayName = formData.get("displayName");
+  const inviteCodeRaw = formData.get("inviteCode");
+  const inviteCode = String(inviteCodeRaw || "").trim();
 
   if (!email || !password || !username) {
     return { error: "Email, password and username are required." };
@@ -38,12 +40,20 @@ export async function signUp(prevState, formData) {
   // If email confirmation is ENABLED, signUp returns a session: null and
   // requires the user to click the confirmation link before logging in.
   if (data?.session) {
-    // Confirmation is disabled — user is already authenticated.
+    // Confirmation is disabled — user is already authenticated (profile trigger ran).
+    // If an invitation code was supplied, apply the referral server-side (atomic, idempotent).
+    if (inviteCode) {
+      const { data: referralResult, error: referralError } = await supabase.rpc("apply_referral_code", {
+        p_code: inviteCode,
+      });
+      // Ignore errors; invalid codes simply award nothing. Notifications cover success.
+    }
     revalidatePath("/", "layout");
     redirect("/");
   }
 
   // Confirmation is enabled — user must verify their email first.
+  // Referral cannot be applied now (no session). Return success message.
   return {
     success: true,
     message:
