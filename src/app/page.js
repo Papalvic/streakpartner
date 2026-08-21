@@ -190,23 +190,23 @@ export default async function Dashboard() {
               {activeMatches.map((m) => {
                 const opp = getOpp(m);
                 return (
-                  <Link key={m.id} href={`/matches/${m.id}`} className="g-card-press block overflow-hidden">
+                  <div key={m.id} className="g-card-press block overflow-hidden">
                     <div className="flex items-center justify-between p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-bold text-accent">
-                          {opp?.display_name?.[0] || opp?.username?.[0] || "?"}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-white">{opp?.display_name || opp?.username || "Player"}</p>
+                      <Link href={`/profile/${opp?.id}`} className="flex min-w-0 flex-1 items-center gap-3 hover:underline">
+                        <Avatar avatarId={opp?.avatar_id} size={40} className="shrink-0 rounded-xl" />
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-white">{opp?.display_name || opp?.username || "Player"}</p>
+                          <p className="truncate text-[10px] text-slate-500">@{opp?.username}</p>
                           <p className="text-xs text-slate-400">Pot: {m.stake * 2} coins · <span className="text-accent">In progress</span></p>
                         </div>
-                      </div>
-                      <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold text-accent">LIVE</span>
+                      </Link>
+                      <span className="shrink-0 rounded-full bg-accent/10 px-2.5 py-1 text-[11px] font-semibold text-accent">LIVE</span>
                     </div>
-                    <div className="border-t border-line px-4 py-3 text-center text-xs font-semibold text-accent">
+                    <Link href={`/matches/${m.id}`}
+                      className="border-t border-line px-4 py-3 text-center text-xs font-semibold text-accent hover:bg-night-800">
                       Open Match Room →
-                    </div>
-                  </Link>
+                    </Link>
+                  </div>
                 );
               })}
             </div>
