@@ -37,7 +37,7 @@ const navItems = [
   { name: "Feed", href: "/feed", icon: FeedIcon },
   { name: "Matches", href: "/matches", icon: SwordsIcon },
   { name: "Tournaments", href: "/tournaments", icon: TrophyIcon },
-  { name: "Notifications", href: "/notifications", icon: BellIcon },
+  { name: "Notif", href: "/notifications", icon: BellIcon },
   { name: "Profile", href: "/profile", icon: UserIcon },
 ];
 
@@ -69,7 +69,7 @@ export default function BottomNav({ active = "home" }) {
         {navItems.map((item) => {
           const isActive = active === item.name.toLowerCase();
           const Icon = item.icon;
-          const showBadge = item.name === "Notifications" && unread > 0;
+          const showBadge = item.name === "Notif" && unread > 0;
           return (
             <Link
               key={item.name}

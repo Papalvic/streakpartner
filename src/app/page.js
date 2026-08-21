@@ -3,7 +3,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logOut } from "@/app/actions/auth";
 import { createMatch, acceptMatch, rejectMatch } from "@/app/actions/matches";
-import NotificationBell from "@/app/components/NotificationBell";
 import CreateMatchPanel from "@/app/components/CreateMatchPanel";
 import Avatar from "@/app/components/Avatar";
 import BottomNav from "@/app/components/BottomNav";
@@ -94,7 +93,6 @@ export default async function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <NotificationBell currentUserId={user.id} />
             <form action={logOut}>
               <button type="submit"
                 className="flex items-center gap-1.5 rounded-lg border border-line bg-night-800 px-3 py-2 text-xs font-medium text-slate-300 hover:border-line-light hover:text-white transition-colors">
