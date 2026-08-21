@@ -174,7 +174,7 @@ export default async function MatchRoomPage({ params }) {
         {/* Accepted: submit result */}
         {match.status === "accepted" && (
           <section className="mt-4">
-            <MatchResultForm matchId={match.id} />
+            <MatchResultForm match={match} />
           </section>
         )}
 
