@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
-import Avatar from "@/app/components/Avatar";
+import AvatarWithPresence from "@/app/components/AvatarWithPresence";
 import { searchPlayers } from "@/app/actions/search";
 
 export default function PlayerSearch({ onSelect }) {
@@ -65,7 +65,7 @@ export default function PlayerSearch({ onSelect }) {
           {results.map((p) => (
             <div key={p.id} className="flex items-center gap-2 rounded-xl border border-line bg-night-800 px-2 py-1.5">
               <Link href={`/profile/${p.id}`}>
-                <Avatar avatarId={p.avatar_id} size={28} className="shrink-0" />
+                <AvatarWithPresence userId={p.id} avatarId={p.avatar_id} size={28} className="shrink-0" />
               </Link>
               <div className="min-w-0 flex-1">
                 <Link href={`/profile/${p.id}`} className="block truncate text-sm font-semibold text-white hover:text-accent">
