@@ -32,8 +32,8 @@ async function getDashboardData() {
     .select(
       `id, status, stake, settled, winner_id, created_at,
        challenger_id, opponent_id,
-       challenger:profiles!matches_challenger_id_fkey(username, display_name),
-       opponent:profiles!matches_opponent_id_fkey(username, display_name)`
+       challenger:profiles!matches_challenger_id_fkey(id, username, display_name, avatar_id),
+       opponent:profiles!matches_opponent_id_fkey(id, username, display_name, avatar_id)`
     )
     .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`)
     .order("created_at", { ascending: false });
@@ -48,10 +48,11 @@ async function getDashboardData() {
 }
 
 export default async function Dashboard() {
-  const { user, profile, players, matches, leaderboard } = await getDashboardData();
+  const { user, profile, players, matches, leaderboard, drawById } = await getDashboardData();
 
   const isChallenger = (m) => m.challenger_id === user.id;
   const getOpp = (m) => (isChallenger(m) ? m.opponent : m.challenger);
+  const getOppId = (m) => (isChallenger(m) ? m.opponent_id : m.challenger_id);
 
   const pendingMatches = matches?.filter((m) => m.status === "pending" && m.opponent_id === user.id);
   const activeMatches = matches?.filter((m) => m.status === "accepted");
@@ -213,7 +214,7 @@ export default async function Dashboard() {
                 return (
                   <div key={m.id} className="g-card-press block overflow-hidden">
                     <div className="flex items-center justify-between p-4">
-                      <Link href={`/profile/${opp?.id}`} className="flex min-w-0 flex-1 items-center gap-3 hover:underline">
+                      <Link href={`/profile/${getOppId(m)}`} className="flex min-w-0 flex-1 items-center gap-3 hover:underline">
                         <Avatar avatarId={opp?.avatar_id} size={40} className="shrink-0 rounded-xl" />
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-white">{opp?.display_name || opp?.username || "Player"}</p>
@@ -245,14 +246,15 @@ export default async function Dashboard() {
               {completedMatches.map((m) => {
                 const opp = getOpp(m);
                 const won = m.winner_id === user.id;
+                const isDraw = !!drawById[m.id];
                 return (
                   <div key={m.id} className="g-card-press flex items-center justify-between rounded-xl px-3 py-3">
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
-                        {won ? "W" : "L"}
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${isDraw ? "bg-blue-500/15 text-blue-400" : won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
+                        {isDraw ? "D" : won ? "W" : "L"}
                       </div>
                       {/* Opponent identity links to profile */}
-                      <Link href={`/profile/${opp?.id}`} className="flex items-center gap-2 hover:underline">
+                      <Link href={`/profile/${getOppId(m)}`} className="flex items-center gap-2 hover:underline">
                         <Avatar avatarId={opp?.avatar_id} size={30} className="rounded-xl" />
                         <span>
                           <span className="block text-sm font-semibold text-white">{opp?.display_name || opp?.username || "Player"}</span>
@@ -261,8 +263,8 @@ export default async function Dashboard() {
                       </Link>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
-                        {won ? "WON" : "LOST"} · {won ? `+${m.stake * 2}` : `-${m.stake}`}
+                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isDraw ? "bg-blue-500/15 text-blue-400" : won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
+                        {isDraw ? "DRAW · STAKE RETURNED" : won ? `WON +${m.stake * 2}` : `LOST -${m.stake}`}
                       </span>
                       <Link href={`/matches/${m.id}`} className="rounded-lg border border-line bg-night-800 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:text-white">
                         View
