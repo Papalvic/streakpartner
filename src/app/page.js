@@ -58,6 +58,14 @@ async function getDashboardData() {
 }
 
 export default async function Dashboard() {
+  const supabaseUnread = await createClient();
+  const { data: userAuth } = await supabaseUnread.auth.getUser();
+  const { count: unreadCount } = await supabaseUnread
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userAuth.user?.id)
+    .eq("is_read", false);
+
   const { user, profile, players, matches, leaderboard, drawById } = await getDashboardData();
 
   const isChallenger = (m) => m.challenger_id === user.id;
@@ -331,7 +339,7 @@ export default async function Dashboard() {
         )}
       </main>
 
-      <BottomNav active="home" />
+      <BottomNav active="home" unreadCount={unreadCount || 0} />
     </div>
   );
 }
