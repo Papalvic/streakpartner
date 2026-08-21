@@ -241,15 +241,18 @@ export default async function TournamentDetailPage({ params }) {
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-night-700 text-[10px] font-bold text-slate-300">
                       #{p.seed}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">
-                        {isMe ? "You" : p.player?.display_name || p.player?.username || "Player"}
-                        {isMe && <span className="ml-1.5 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">YOU</span>}
-                        {isWinner && <span className="ml-1.5 rounded bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">🏆 WINNER</span>}
-                      </p>
-                      <p className="text-[11px] text-slate-500">@{p.player?.username}</p>
-                    </div>
-                    <span className="text-[10px] text-slate-500">
+                    <Link href={`/profile/${p.player_id}`} className="flex min-w-0 flex-1 items-center gap-2 hover:underline">
+                      <Avatar avatarId={p.player?.avatar_id} size={30} className="shrink-0 rounded-xl" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-white">
+                          {isMe ? "You" : p.player?.display_name || p.player?.username || "Player"}
+                          {isMe && <span className="ml-1.5 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">YOU</span>}
+                          {isWinner && <span className="ml-1.5 rounded bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">🏆 WINNER</span>}
+                        </p>
+                        <p className="text-[11px] text-slate-500">@{p.player?.username}</p>
+                      </div>
+                    </Link>
+                    <span className="shrink-0 text-[10px] text-slate-500">
                       {new Date(p.joined_at).toLocaleDateString()}
                     </span>
                   </div>
