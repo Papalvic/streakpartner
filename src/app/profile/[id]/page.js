@@ -77,6 +77,7 @@ export default async function PublicProfilePage({ params }) {
         <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Stat label="Balance" value={bal.toLocaleString()} accent="text-accent" icon="🪙" />
           <Stat label="Matches" value={played} icon="⚽" />
+          <Stat label="Tournament Matches" value={profile.tournament_matches_played ?? 0} icon="🛡️" accent="text-blue-400" />
           <Stat label="Wins" value={wins} accent="text-accent" icon="✅" />
           <Stat label="Losses" value={losses} accent="text-red-400" icon="❌" />
           <Stat label="Trophies" value={trophies} accent="text-amber-400" icon="🏆" />

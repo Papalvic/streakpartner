@@ -109,6 +109,7 @@ export default async function ProfilePage() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-widest text-slate-400">Career Stats</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard label="Matches Played" value={played} icon="⚽" />
+            <StatCard label="Tournament Matches" value={profile?.tournament_matches_played ?? 0} icon="🛡️" accent="text-blue-400" />
             <StatCard label="Wins" value={wins} icon="✅" accent="text-accent" />
             <StatCard label="Losses" value={losses} icon="❌" accent="text-red-400" />
             <StatCard label="Win Rate" value={`${winRate}%`} icon="📊" />
