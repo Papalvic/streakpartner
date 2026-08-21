@@ -100,6 +100,26 @@ export async function createMatch(formData) {
   return { success: true, matchId: data };
 }
 
+export async function rejectMatch(formData) {
+  const supabase = await createClient();
+  const matchId = formData.get("matchId");
+  if (!matchId) return { error: "Match ID is required." };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+
+  // Secure RPC: locks match, verifies pending + opponent-only, atomic refund to challenger,
+  // records match_refund, cancels match, notifies challenger.
+  const { error } = await supabase.rpc("reject_match", { p_match_id: matchId });
+  if (error) return { error: error.message };
+
+  revalidatePath("/");
+  revalidatePath("/matches");
+  return { success: true };
+}
+
 export async function acceptMatch(formData) {
   const supabase = await createClient();
   const matchId = formData.get("matchId");

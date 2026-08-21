@@ -2,13 +2,13 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logOut } from "@/app/actions/auth";
-import { createMatch, acceptMatch } from "@/app/actions/matches";
+import { createMatch, acceptMatch, rejectMatch } from "@/app/actions/matches";
 import NotificationBell from "@/app/components/NotificationBell";
 import CreateMatchPanel from "@/app/components/CreateMatchPanel";
 import Avatar from "@/app/components/Avatar";
 import BottomNav from "@/app/components/BottomNav";
 import {
-  FlameIcon, CoinIcon, CheckIcon, PlusIcon, LogoutIcon, FireIcon,
+  FlameIcon, CoinIcon, CheckIcon, PlusIcon, LogoutIcon, FireIcon, ChatIcon,
 } from "@/app/components/Icons";
 
 async function getDashboardData() {
@@ -140,6 +140,20 @@ export default async function Dashboard() {
           </div>
         </section>
 
+        {/* Global Chat card */}
+        <section className="mt-5 g-card-press flex items-center gap-3 p-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/15 text-accent">
+            <ChatIcon size={22} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-bold text-white">Global Chat</h2>
+            <p className="text-xs text-slate-400">Talk with other StreakPartner players</p>
+          </div>
+          <Link href="/chat" className="flex h-10 shrink-0 items-center rounded-xl bg-accent px-3 text-sm font-bold text-black hover:bg-accent-soft">
+            Open →
+          </Link>
+        </section>
+
         {/* Incoming challenges */}
         {pendingMatches?.length > 0 && (
           <section className="mt-6">
@@ -171,6 +185,13 @@ export default async function Dashboard() {
                           <button type="submit"
                             className="flex items-center gap-1 rounded-xl bg-accent px-4 py-2 text-xs font-bold text-black hover:bg-accent-soft transition-colors">
                             <CheckIcon size={14} /> Accept
+                          </button>
+                        </form>
+                        <form action={rejectMatch}>
+                          <input type="hidden" name="matchId" value={m.id} />
+                          <button type="submit"
+                            className="rounded-xl border border-line bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/20 transition-colors">
+                            Reject
                           </button>
                         </form>
                       </div>
