@@ -44,7 +44,18 @@ async function getDashboardData() {
     .order("wins", { ascending: false })
     .limit(5);
 
-  return { user, profile, players, matches, leaderboard };
+  // Draw flags for completed matches (so draws never show as LOST).
+  const completedIds = (matches || []).filter((m) => m.status === "completed").map((m) => m.id);
+  const drawById = {};
+  if (completedIds.length > 0) {
+    const { data: results } = await supabase
+      .from("match_results")
+      .select("match_id, is_draw")
+      .in("match_id", completedIds);
+    (results || []).forEach((r) => (drawById[r.match_id] = !!r.is_draw));
+  }
+
+  return { user, profile, players, matches, leaderboard, drawById };
 }
 
 export default async function Dashboard() {
