@@ -123,8 +123,9 @@ export async function acceptMatch(formData) {
 export async function settleMatch(formData) {
   const supabase = await createClient();
   const matchId = formData.get("matchId");
-  const yourScore = Number(formData.get("yourScore"));
-  const oppScore = Number(formData.get("oppScore"));
+  // Explicit challener/opponent scores — the client never swaps roles.
+  const challengerScore = Number(formData.get("challengerScore"));
+  const opponentScore = Number(formData.get("opponentScore"));
   const screenshotUrl = formData.get("screenshotUrl") || null;
 
   if (!matchId) {
@@ -133,15 +134,15 @@ export async function settleMatch(formData) {
 
   // Scores must be integers >= 0. Draws are now valid.
   if (
-    !Number.isInteger(yourScore) ||
-    !Number.isInteger(oppScore) ||
-    yourScore < 0 ||
-    oppScore < 0
+    !Number.isInteger(challengerScore) ||
+    !Number.isInteger(opponentScore) ||
+    challengerScore < 0 ||
+    opponentScore < 0
   ) {
     return { error: "Scores must be whole numbers 0 or greater." };
   }
 
-  // IMPORTANT: Fetch the match to map scores to challenger/opponent roles.
+  // IMPORTANT: Verify the submitting user is one of the two participants.
   const { data: match, error: matchError } = await supabase
     .from("matches")
     .select("challenger_id, opponent_id, status, settled")
@@ -160,17 +161,8 @@ export async function settleMatch(formData) {
     return { error: "Not authenticated." };
   }
 
-  // Either participant may submit; the server verifies membership.
-  let challengerScore;
-  let opponentScore;
-
-  if (user.id === match.challenger_id) {
-    challengerScore = yourScore;
-    opponentScore = oppScore;
-  } else if (user.id === match.opponent_id) {
-    challengerScore = oppScore;
-    opponentScore = yourScore;
-  } else {
+  // Either challenger or opponent may submit, but it must be a participant.
+  if (user.id !== match.challenger_id && user.id !== match.opponent_id) {
     return { error: "Only match participants can submit results." };
   }
 
