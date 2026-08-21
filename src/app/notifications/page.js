@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import BottomNav from "@/app/components/BottomNav";
-import NotificationBell from "@/app/components/NotificationBell";
 import { markAllNotificationsRead } from "@/app/actions/notifications";
 
 function hrefFor(n) {
@@ -18,6 +17,13 @@ export default async function NotificationsPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // Unread count stays visible (badge) even on this page; reading only clears when a message is read/marked.
+  const { count: unreadCount } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("is_read", false);
 
   const { data: notifications } = await supabase
     .from("notifications")
@@ -36,7 +42,6 @@ export default async function NotificationsPage() {
             </Link>
             <h1 className="text-base font-extrabold text-white">Notifications</h1>
           </div>
-          <NotificationBell currentUserId={user.id} />
         </div>
       </header>
 
@@ -77,7 +82,7 @@ export default async function NotificationsPage() {
         )}
       </main>
 
-      <BottomNav active="home" />
+      <BottomNav active="notif" unreadCount={unreadCount || 0} />
     </div>
   );
 }
