@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import Avatar from "@/app/components/Avatar";
+import AvatarWithPresence from "@/app/components/AvatarWithPresence";
 import { supabase } from "@/lib/supabase/client";
 import { deleteTournamentMessage, sendTournamentMessage } from "@/app/actions/chat";
 
@@ -97,7 +97,7 @@ export default function TournamentChat({ tournamentId, currentUserId, initialMes
               <div key={m.id} className={`mb-3 flex w-full ${mine ? "justify-end" : "justify-start"}`}>
                 {!mine && (
                   <Link href={`/profile/${m.user_id}`} className="mr-2 shrink-0 self-end">
-                    <Avatar avatarId={m.user?.avatar_id} size={30} className="rounded-xl" />
+                    <AvatarWithPresence userId={m.user_id} avatarId={m.user?.avatar_id} size={30} className="rounded-xl" />
                   </Link>
                 )}
                 <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${

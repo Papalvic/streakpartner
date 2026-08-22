@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import Avatar from "@/app/components/Avatar";
+import AvatarWithPresence from "@/app/components/AvatarWithPresence";
 import { supabase } from "@/lib/supabase/client";
 import { deleteGeneralMessage, sendGeneralMessage } from "@/app/actions/chat";
 
@@ -93,7 +93,7 @@ export default function GeneralChatClient({ currentUserId, initialMessages = [] 
               <div key={m.id} className={`flex w-full mb-3 ${mine ? "justify-end" : "justify-start"}`}>
                 {!mine && (
                   <Link href={`/profile/${m.user_id}`} className="mr-2 shrink-0 self-end">
-                    <Avatar avatarId={m.user?.avatar_id} size={30} className="rounded-xl" />
+                    <AvatarWithPresence userId={m.user_id} avatarId={m.user?.avatar_id} size={30} className="rounded-xl" />
                   </Link>
                 )}
                 <div className={`max-w-[80%] rounded-2xl px-3 py-2 ${mine ? "bg-accent/20 border border-accent/30 rounded-br-sm text-right" : "bg-night-800 border border-line rounded-bl-sm"}`}>
