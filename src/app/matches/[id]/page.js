@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import BottomNav from "@/app/components/BottomNav";
 import Avatar from "@/app/components/Avatar";
+import AvatarWithPresence from "@/app/components/AvatarWithPresence";
 import { acceptMatch } from "@/app/actions/matches";
 import MatchResultForm from "@/app/components/MatchResultForm";
 import MatchChat from "@/app/components/MatchChat";
@@ -95,7 +96,7 @@ export default async function MatchRoomPage({ params }) {
           <div className="pointer-events-none absolute -right-12 -bottom-12 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
           <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <Link href={`/profile/${match.challenger_id}`} className="flex flex-col items-center gap-2">
-              <Avatar avatarId={challenger?.avatar_id} size={64} className="rounded-2xl" />
+              <AvatarWithPresence userId={match.challenger_id} avatarId={challenger?.avatar_id} size={64} className="rounded-2xl" />
               <span className="max-w-full truncate text-sm font-bold text-white">{challenger?.display_name || challenger?.username || "Player"}</span>
               <span className="text-[10px] text-slate-500">@{challenger?.username}</span>
             </Link>
@@ -109,7 +110,7 @@ export default async function MatchRoomPage({ params }) {
               )}
             </div>
             <Link href={`/profile/${match.opponent_id}`} className="flex flex-col items-center gap-2">
-              <Avatar avatarId={opponent?.avatar_id} size={64} className="rounded-2xl" />
+              <AvatarWithPresence userId={match.opponent_id} avatarId={opponent?.avatar_id} size={64} className="rounded-2xl" />
               <span className="max-w-full truncate text-sm font-bold text-white">{opponent?.display_name || opponent?.username || "Player"}</span>
               <span className="text-[10px] text-slate-500">@{opponent?.username}</span>
             </Link>

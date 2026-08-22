@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import Avatar from "@/app/components/Avatar";
+import AvatarWithPresence from "@/app/components/AvatarWithPresence";
 import { supabase } from "@/lib/supabase/client";
 import { createPost, deletePost, createComment, deleteComment } from "@/app/actions/social";
 
@@ -127,7 +127,7 @@ export default function FeedClient({ currentUserId, initialPosts = [], initialCo
             return (
               <div key={p.id} className="g-card rounded-2xl p-4">
                 <div className="flex items-center gap-3">
-                  <Link href={`/profile/${p.user_id}`}><Avatar avatarId={p.user?.avatar_id} size={40} className="shrink-0" /></Link>
+                  <Link href={`/profile/${p.user_id}`}><AvatarWithPresence userId={p.user_id} avatarId={p.user?.avatar_id} size={40} className="shrink-0" /></Link>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-white"><Link href={`/profile/${p.user_id}`} className="hover:text-accent">{p.user?.display_name || p.user?.username || "Player"}</Link></p>
                     <p className="text-[10px] text-slate-500">@{p.user?.username} · {fmt(p.created_at)}</p>
@@ -141,7 +141,7 @@ export default function FeedClient({ currentUserId, initialPosts = [], initialCo
                     <div className="mb-2 flex flex-col gap-2">
                       {cs.map((c) => (
                         <div key={c.id} className="flex items-start gap-2">
-                          <Link href={`/profile/${c.user_id}`} className="shrink-0"><Avatar avatarId={c.user?.avatar_id} size={24} /></Link>
+                          <Link href={`/profile/${c.user_id}`} className="shrink-0"><AvatarWithPresence userId={c.user_id} avatarId={c.user?.avatar_id} size={24} /></Link>
                           <div className="min-w-0 flex-1 rounded-lg bg-night-800 px-2 py-1.5">
                             <p className="text-[10px] font-semibold text-accent"><Link href={`/profile/${c.user_id}`} className="hover:underline">{c.user?.display_name || c.user?.username || "Player"}</Link></p>
                             <p className="break-words text-xs text-white">{c.content}</p>

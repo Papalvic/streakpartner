@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import BottomNav from "@/app/components/BottomNav";
-import Avatar from "@/app/components/Avatar";
+import AvatarWithPresence from "@/app/components/AvatarWithPresence";
 
 export default async function PublicProfilePage({ params }) {
   const { id } = await params;
@@ -60,7 +60,7 @@ export default async function PublicProfilePage({ params }) {
         <section className="g-card relative overflow-hidden rounded-2xl p-5">
           <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
           <div className="flex items-center gap-4">
-            <Avatar avatarId={profile.avatar_id} size={64} className="shrink-0 rounded-2xl" />
+            <AvatarWithPresence userId={profile.id} avatarId={profile.avatar_id} size={64} className="shrink-0 rounded-2xl" />
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-lg font-bold text-white">
                 {profile.display_name || profile.username}

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { joinTournament } from "@/app/actions/tournaments";
 import BottomNav from "@/app/components/BottomNav";
 import Avatar from "@/app/components/Avatar";
+import AvatarWithPresence from "@/app/components/AvatarWithPresence";
 import { TournamentIcon, PlusIcon, CheckIcon, ChatIcon } from "@/app/components/Icons";
 import TournamentChat from "@/app/components/TournamentChat";
 
@@ -242,7 +243,7 @@ export default async function TournamentDetailPage({ params }) {
                       #{p.seed}
                     </span>
                     <Link href={`/profile/${p.player_id}`} className="flex min-w-0 flex-1 items-center gap-2 hover:underline">
-                      <Avatar avatarId={p.player?.avatar_id} size={30} className="shrink-0 rounded-xl" />
+                      <AvatarWithPresence userId={p.player_id} avatarId={p.player?.avatar_id} size={30} className="shrink-0 rounded-xl" />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-white">
                           {isMe ? "You" : p.player?.display_name || p.player?.username || "Player"}
@@ -300,7 +301,7 @@ export default async function TournamentDetailPage({ params }) {
                           <Link key={m.id} href={`/tournaments/${tournament.id}/matches/${m.id}`} className="g-card-press block rounded-xl p-3">
                             <div className="flex flex-col gap-1.5">
                               <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${p1Won ? "bg-accent/10 text-accent" : "bg-night-800 text-slate-300"}`}>
-                                <Avatar avatarId={m.player1?.avatar_id} size={24} className="shrink-0" />
+                                <AvatarWithPresence userId={m.player1_id} avatarId={m.player1?.avatar_id} size={24} className="shrink-0" />
                                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{p1Name || "Waiting for player"}</span>
                                 {m.status === "completed" && !m.is_draw && <span className="shrink-0 text-sm font-black">{m.player1_score ?? ""}</span>}
                                 {p1Won && <span className="shrink-0 text-[10px] font-bold">WINNER</span>}
@@ -310,7 +311,7 @@ export default async function TournamentDetailPage({ params }) {
                                 {m.is_draw && <span className="font-bold text-blue-400">DRAW</span>}
                               </div>
                               <div className={`flex items-center gap-2 rounded-lg px-3 py-1.5 ${p2Won ? "bg-accent/10 text-accent" : "bg-night-800 text-slate-300"}`}>
-                                <Avatar avatarId={m.player2?.avatar_id} size={24} className="shrink-0" />
+                                <AvatarWithPresence userId={m.player2_id} avatarId={m.player2?.avatar_id} size={24} className="shrink-0" />
                                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{p2Name || "Waiting for player"}</span>
                                 {m.status === "completed" && !m.is_draw && <span className="shrink-0 text-sm font-black">{m.player2_score ?? ""}</span>}
                                 {p2Won && <span className="shrink-0 text-[10px] font-bold">WINNER</span>}
