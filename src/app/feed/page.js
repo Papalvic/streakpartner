@@ -4,17 +4,29 @@ import BottomNav from "@/app/components/BottomNav";
 import { ChatIcon } from "@/app/components/Icons";
 import FeedClient from "@/app/components/FeedClient";
 
-export default async function FeedPage() {
+const PAGE_SIZE = 13;
+
+export default async function FeedPage({ searchParams }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Fetch posts with author profile (server-side so RLS reads pass with HttpOnly session).
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params?.page) || 1);
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  // Count total posts for pagination.
+  const { count } = await supabase
+    .from("social_posts")
+    .select("id", { count: "exact", head: true });
+
+  // Fetch a page of posts (13 per page) with author profile.
   const { data: posts } = await supabase
     .from("social_posts")
     .select("id, user_id, content, created_at, user:profiles!social_posts_user_id_fkey(username, display_name, avatar_id)")
     .order("created_at", { ascending: false })
-    .limit(50);
+    .range(from, to);
 
   // Fetch comments for those posts.
   const postIds = (posts || []).map((p) => p.id);

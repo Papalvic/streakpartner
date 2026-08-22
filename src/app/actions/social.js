@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 const POST_MAX = 500;
-const COMMENT_MAX = 300;
+const COMMENT_MAX = 200;
+const COMMENT_CAP = 8;
 const AVATAR_KEYS =
   "gamer-1,striker,keeper,cyber-1,cyber-2,cyber-3,cyber-4,cyber-5,cyber-6,cyber-7,cyber-8,cyber-9,futuristic-1,futuristic-2,futuristic-3,futuristic-4,esports-1,esports-2,esports-3,esports-4,gamer-2,gamer-3,gamer-4,badge-1,badge-2,badge-3,badge-4,badge-5,badge-6,badge-7,badge-8".split(",");
 
@@ -100,6 +101,14 @@ export async function createComment(formData) {
   if (!postId) return { error: "Post ID required." };
   if (!content) return { error: "Comment cannot be empty." };
   if (content.length > COMMENT_MAX) return { error: `Comment too long (max ${COMMENT_MAX}).` };
+
+  // Enforce max 8 comments per post (server-side).
+  const { count, error: countErr } = await supabase
+    .from("post_comments")
+    .select("id", { count: "exact", head: true })
+    .eq("post_id", postId);
+  if (countErr) return { error: countErr.message };
+  if (count >= COMMENT_CAP) return { error: `Maximum of ${COMMENT_CAP} comments reached on this post.` };
 
   const { data: saved, error } = await supabase
     .from("post_comments")

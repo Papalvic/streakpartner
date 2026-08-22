@@ -7,7 +7,8 @@ import { supabase } from "@/lib/supabase/client";
 import { createPost, deletePost, createComment, deleteComment } from "@/app/actions/social";
 
 const POST_MAX = 500;
-const COMMENT_MAX = 300;
+const COMMENT_MAX = 200;
+const COMMENT_CAP = 8;
 
 export default function FeedClient({ currentUserId, initialPosts = [], initialComments = [] }) {
   const [posts, setPosts] = useState(initialPosts);
@@ -152,7 +153,14 @@ export default function FeedClient({ currentUserId, initialPosts = [], initialCo
                     </div>
                   )}
 
-                  {isOpen && (
+                  {/* Comment counter (e.g. 6/8) */}
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500">{cs.length}/{COMMENT_CAP} comments</span>
+                    {cs.length >= COMMENT_CAP && <span className="text-[10px] font-bold text-red-400">Limit reached</span>}
+                  </div>
+
+                  {/* Input hidden once the 8-comment cap is reached */}
+                  {isOpen && cs.length < COMMENT_CAP && (
                     <form onSubmit={(e) => addComment(e, p.id)} className="flex gap-2">
                       <input type="text" value={commentInput[p.id] || ""}
                         onChange={(e) => { if (e.target.value.length <= COMMENT_MAX) setCommentInput((prev) => ({ ...prev, [p.id]: e.target.value })); }}
@@ -161,7 +169,7 @@ export default function FeedClient({ currentUserId, initialPosts = [], initialCo
                     </form>
                   )}
 
-                  <button onClick={() => setOpen((prev) => ({ ...prev, [p.id]: !prev[p.id] }))} className="mt-1.5 text-[11px] font-semibold text-accent">{isOpen ? "Hide comments" : `Comment · ${cs.length}`}</button>
+                  <button onClick={() => setOpen((prev) => ({ ...prev, [p.id]: !prev[p.id] }))} className="mt-1.5 text-[11px] font-semibold text-accent">{isOpen ? "Hide comments" : `Comments · ${cs.length}/${COMMENT_CAP}`}</button>
                 </div>
               </div>
             );
