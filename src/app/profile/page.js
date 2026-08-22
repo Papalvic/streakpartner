@@ -26,21 +26,50 @@ export default async function ProfilePage() {
   const trophies = profile?.tournament_wins ?? 0;
   const winRate = played > 0 ? Math.round((wins / played) * 100) : 0;
 
-  // Recent match history for this user.
+  // Recent match history for this user — newest-first, capped at 7.
   const { data: matches } = await supabase
     .from("matches")
     .select(
       `id, status, stake, winner_id, created_at, challenger_id, opponent_id,
-       challenger:profiles!matches_challenger_id_fkey(username, display_name),
-       opponent:profiles!matches_opponent_id_fkey(username, display_name)`
+       challenger:profiles!matches_challenger_id_fkey(id, username, display_name, avatar_id),
+       opponent:profiles!matches_opponent_id_fkey(id, username, display_name, avatar_id)`
     )
     .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`)
     .eq("status", "completed")
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(7);
+
+  // Draw flags + compute the user's draw count (draws are never wins/losses).
+  const completedIds = (matches || []).map((m) => m.id);
+  const drawById = {};
+  if (completedIds.length > 0) {
+    const { data: results } = await supabase
+      .from("match_results")
+      .select("match_id, is_draw")
+      .in("match_id", completedIds);
+    (results || []).forEach((r) => (drawById[r.match_id] = !!r.is_draw));
+  }
+
+  // Total draws across ALL completed matches for this player (career stat).
+  const { data: allResults } = await supabase
+    .from("match_results")
+    .select("match_id, is_draw")
+    .eq("is_draw", true);
+  let draws = 0;
+  if (allResults?.length) {
+    // collect match ids that involve this user and are draws
+    const { data: userDraws } = await supabase
+      .from("matches")
+      .select("id")
+      .eq("status", "completed")
+      .in("id", allResults.map((r) => r.match_id))
+      .or(`challenger_id.eq.${user.id},opponent_id.eq.${user.id}`);
+    draws = userDraws?.length || 0;
+  }
 
   const isChallenger = (m) => m.challenger_id === user.id;
   const getOpp = (m) => (isChallenger(m) ? m.opponent : m.challenger);
+  const getOppId = (m) => (isChallenger(m) ? m.opponent_id : m.challenger_id);
 
   // Referral data
   const referralCode = profile?.referral_code || "";
@@ -112,6 +141,7 @@ export default async function ProfilePage() {
             <StatCard label="Tournament Matches" value={profile?.tournament_matches_played ?? 0} icon="🛡️" accent="text-blue-400" />
             <StatCard label="Wins" value={wins} icon="✅" accent="text-accent" />
             <StatCard label="Losses" value={losses} icon="❌" accent="text-red-400" />
+            <StatCard label="Draws" value={draws} icon="🤝" accent="text-blue-400" />
             <StatCard label="Win Rate" value={`${winRate}%`} icon="📊" />
             <StatCard label="Tournament Wins" value={trophies} icon="🏆" accent="text-amber-400" />
             <StatCard label="Balance" value={bal.toLocaleString()} icon="🪙" accent="text-accent" />
@@ -126,19 +156,23 @@ export default async function ProfilePage() {
               {matches.map((m) => {
                 const opp = getOpp(m);
                 const won = m.winner_id === user.id;
+                const isDraw = !!drawById[m.id];
                 return (
                   <Link key={m.id} href={`/matches/${m.id}`} className="g-card-press flex items-center justify-between rounded-xl px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
-                        {won ? "W" : "L"}
+                      <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${isDraw ? "bg-blue-500/15 text-blue-400" : won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
+                        {isDraw ? "D" : won ? "W" : "L"}
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-white">vs {opp?.display_name || opp?.username || "Player"}</p>
-                        <p className="text-[11px] text-slate-500">{new Date(m.created_at).toLocaleDateString()}</p>
-                      </div>
+                      <Link href={`/profile/${getOppId(m)}`} className="flex items-center gap-2 hover:underline">
+                        <Avatar avatarId={opp?.avatar_id} size={28} className="shrink-0 rounded-lg" />
+                        <div>
+                          <p className="text-sm font-semibold text-white">vs {opp?.display_name || opp?.username || "Player"}</p>
+                          <p className="text-[11px] text-slate-500">@{opp?.username} · {new Date(m.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </Link>
                     </div>
-                    <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
-                      {won ? "WON" : "LOST"} · {won ? `+${m.stake * 2}` : `-${m.stake}`}
+                    <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${isDraw ? "bg-blue-500/15 text-blue-400" : won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
+                      {isDraw ? "DRAW · STAKE RETURNED" : won ? `WON +${m.stake * 2}` : `LOST -${m.stake}`}
                     </span>
                   </Link>
                 );
