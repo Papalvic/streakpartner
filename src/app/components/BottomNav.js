@@ -1,10 +1,7 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 import {
-  HomeIcon,
-  SwordsIcon,
-  TrophyIcon,
-  LeaderboardIcon,
-  UserIcon,
+  HomeIcon, SwordsIcon, TrophyIcon, UserIcon,
 } from "./Icons";
 
 function BellIcon({ size = 21 }) {
@@ -35,13 +32,30 @@ const navItems = [
   { name: "Profile", href: "/profile", icon: UserIcon },
 ];
 
-// Server component: unreadCount computed server-side (HttpOnly session).
-export default function BottomNav({ active = "home", unreadCount = 0 }) {
+// Server component: reads the authenticated user's unread count server-side
+// (HttpOnly session) so the badge shows automatically on EVERY page.
+export default async function BottomNav({ active = "home" }) {
+  let unreadCount = 0;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) {
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", data.user.id)
+        .eq("is_read", false);
+      unreadCount = count || 0;
+    }
+  } catch {
+    // ignore — badge just hides
+  }
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-line bg-night-900/95 backdrop-blur-md">
       <div className="mx-auto grid w-full max-w-lg grid-cols-6 items-center px-1 pb-[env(safe-area-inset-bottom)]">
         {navItems.map((item) => {
-          const isActive = active === item.name.toLowerCase();
+          const isActive = String(active).toLowerCase() === item.name.toLowerCase();
           const Icon = item.icon;
           const showBadge = item.name === "Notif" && unreadCount > 0;
           return (

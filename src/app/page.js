@@ -181,43 +181,49 @@ export default async function Dashboard() {
                 {pendingMatches.length}
               </span>
             </div>
+            {/* Limit to 3 on the dashboard so many challenges can't break the layout; the rest live on /matches. */}
             <div className="flex flex-col gap-3">
-              {pendingMatches.map((m) => {
+              {pendingMatches.slice(0, 3).map((m) => {
                 const opp = getOpp(m);
                 return (
                   <div key={m.id} className="g-card animate-pop p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-bold text-accent">
-                        {opp?.display_name?.[0] || opp?.username?.[0] || "?"}
-                      </div>
+                    {/* Identity row (full width — buttons never crowd the name) */}
+                    <Link href={`/profile/${getOppId(m)}`} className="flex items-center gap-3 hover:opacity-80">
+                      <Avatar avatarId={opp?.avatar_id} size={40} className="shrink-0 rounded-xl" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-white">{opp?.display_name || opp?.username || "Player"}</p>
-                        <p className="text-xs text-slate-400">@{opp?.username || "unknown"} · stake {m.stake} coins</p>
+                        <p className="truncate text-xs text-slate-400">@{opp?.username || "unknown"} · stake {m.stake} coins</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Link href={`/matches/${m.id}`} className="rounded-xl border border-line bg-night-800 px-3 py-2 text-xs font-bold text-slate-300 hover:text-white">
-                          View
-                        </Link>
-                        <form action={acceptMatch}>
-                          <input type="hidden" name="matchId" value={m.id} />
-                          <button type="submit"
-                            className="flex items-center gap-1 rounded-xl bg-accent px-4 py-2 text-xs font-bold text-black hover:bg-accent-soft transition-colors">
-                            <CheckIcon size={14} /> Accept
-                          </button>
-                        </form>
-                        <form action={rejectMatch}>
-                          <input type="hidden" name="matchId" value={m.id} />
-                          <button type="submit"
-                            className="rounded-xl border border-line bg-red-500/10 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/20 transition-colors">
-                            Reject
-                          </button>
-                        </form>
-                      </div>
+                    </Link>
+                    {/* Buttons row — below, plenty of width */}
+                    <div className="mt-3 grid grid-cols-3 gap-2">
+                      <Link href={`/matches/${m.id}`} className="flex h-10 items-center justify-center rounded-xl border border-line bg-night-800 text-xs font-bold text-slate-300 hover:text-white">
+                        View
+                      </Link>
+                      <form action={acceptMatch}>
+                        <input type="hidden" name="matchId" value={m.id} />
+                        <button type="submit"
+                          className="flex h-10 w-full items-center justify-center gap-1 rounded-xl bg-accent text-xs font-bold text-black hover:bg-accent-soft transition-colors">
+                          <CheckIcon size={14} /> Accept
+                        </button>
+                      </form>
+                      <form action={rejectMatch}>
+                        <input type="hidden" name="matchId" value={m.id} />
+                        <button type="submit"
+                          className="flex h-10 w-full items-center justify-center rounded-xl border border-line bg-red-500/10 text-xs font-bold text-red-300 hover:bg-red-500/20 transition-colors">
+                          Reject
+                        </button>
+                      </form>
                     </div>
                   </div>
                 );
               })}
             </div>
+            {pendingMatches.length > 3 && (
+              <a href="/matches" className="mt-3 block text-center text-xs font-bold text-accent hover:text-accent-soft">
+                View all {pendingMatches.length} challenges →
+              </a>
+            )}
           </section>
         )}
 
