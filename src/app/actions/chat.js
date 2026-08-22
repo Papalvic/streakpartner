@@ -40,13 +40,13 @@ export async function sendGeneralMessage(formData) {
   // Attach the sender profile so the broadcast payload has display info.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username, display_name")
+    .select("username, display_name, avatar_id")
     .eq("id", user.id)
     .single();
 
   const message = {
     ...saved,
-    user: profile || { username: null, display_name: null },
+    user: profile || { username: null, display_name: null, avatar_id: null },
   };
 
   // Broadcast so all clients get the message instantly without a page refresh.
@@ -99,13 +99,13 @@ export async function sendTournamentMessage(formData) {
   // Attach the sender profile so the broadcast has display info.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username, display_name")
+    .select("username, display_name, avatar_id")
     .eq("id", user.id)
     .single();
 
   const message = {
     ...saved,
-    user: profile || { username: null, display_name: null },
+    user: profile || { username: null, display_name: null, avatar_id: null },
   };
 
   // Broadcast to the tournament channel so all participants get it instantly.

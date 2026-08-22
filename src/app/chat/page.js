@@ -18,7 +18,7 @@ export default async function ChatPage() {
   // Load initial messages server-side so RLS reads pass with the HttpOnly session.
   const { data: initialMessages } = await supabase
     .from("general_chat_messages")
-    .select("id, user_id, content, created_at, user:profiles!general_chat_messages_user_id_fkey(username, display_name)")
+    .select("id, user_id, content, created_at, user:profiles!general_chat_messages_user_id_fkey(username, display_name, avatar_id)")
     .order("created_at", { ascending: true })
     .limit(100);
 

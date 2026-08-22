@@ -10,46 +10,33 @@ export function usePresence() {
 }
 
 // Centralized online-presence via Supabase Realtime Presence.
-// One shared channel; no per-avatar subscriptions, no DB writes.
-export default function PresenceProvider({ children }) {
+// Uses the authenticated user id passed from the server (HttpOnly session),
+// because the browser client has no session and cannot resolve it itself.
+export default function PresenceProvider({ userId, children }) {
   const [online, setOnline] = useState(new Set());
   const channelRef = useRef(null);
 
   useEffect(() => {
-    let mounted = true;
+    if (!userId) return;
 
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    const channel = supabase.channel("online-presence", {
+      config: { presence: { key: userId } },
+    });
 
-      const channel = supabase.channel("online-presence", {
-        config: { presence: { key: user.id } },
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        setOnline(new Set(Object.keys(state)));
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({ user_id: userId });
+        }
       });
 
-      channel
-        .on("presence", { event: "sync" }, () => {
-          if (!mounted) return;
-          const state = channel.presenceState();
-          const ids = new Set();
-          Object.keys(state).forEach((key) => ids.add(key));
-          setOnline(ids);
-        })
-        .subscribe(async (status) => {
-          if (status === "SUBSCRIBED") {
-            await channel.track({ user_id: user.id });
-          }
-        });
-
-      channelRef.current = channel;
-    }
-
-    init();
-
-    return () => {
-      mounted = false;
-      if (channelRef.current) supabase.removeChannel(channelRef.current);
-    };
-  }, []);
+    channelRef.current = channel;
+    return () => supabase.removeChannel(channelRef.current);
+  }, [userId]);
 
   return (
     <PresenceContext.Provider value={{ online }}>

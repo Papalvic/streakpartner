@@ -43,7 +43,7 @@ export default async function TournamentDetailPage({ params }) {
     .from("tournament_participants")
     .select(
       `player_id, seed, joined_at,
-       player:profiles!tournament_participants_player_id_fkey(username, display_name)`
+       player:profiles!tournament_participants_player_id_fkey(username, display_name, avatar_id)`
     )
     .eq("tournament_id", id)
     .order("seed", { ascending: true });
@@ -70,7 +70,7 @@ export default async function TournamentDetailPage({ params }) {
     const { data: chatMessages } = await supabase
       .from("tournament_chat_messages")
       .select(
-        "id, user_id, content, created_at, user:profiles!tournament_chat_messages_user_id_fkey(username, display_name)"
+        "id, user_id, content, created_at, user:profiles!tournament_chat_messages_user_id_fkey(username, display_name, avatar_id)"
       )
       .eq("tournament_id", id)
       .order("created_at", { ascending: true })

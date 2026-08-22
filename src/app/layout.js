@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import PresenceProvider from "@/app/components/PresenceProvider";
+import { createClient } from "@/lib/supabase/server";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,19 +13,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
-  title: "StreakPartner — DLS Match Platform",
-  description: "Compete in Dream League Soccer matches, win promptcoins and climb the leaderboard.",
-};
+export default async function RootLayout({ children }) {
+  // Resolve the authenticated user id server-side (HttpOnly session), since the
+  // browser client has no session and cannot resolve presence itself.
+  let userId = null;
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    userId = user?.id ?? null;
+  } catch {}
 
-export default function RootLayout({ children }) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className="h-full">
       <body className="min-h-full flex flex-col">
-        <PresenceProvider>{children}</PresenceProvider>
+        <PresenceProvider userId={userId}>{children}</PresenceProvider>
       </body>
     </html>
   );
