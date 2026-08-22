@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import BottomNav from "@/app/components/BottomNav";
 import { ChatIcon } from "@/app/components/Icons";
@@ -57,6 +58,23 @@ export default async function FeedPage({ searchParams }) {
       </header>
 
       <FeedClient currentUserId={user.id} initialPosts={posts || []} initialComments={comments} />
+
+      {/* Pagination (13 posts/page) */}
+      {count > PAGE_SIZE && (
+        <div className="mx-auto flex w-full max-w-lg items-center justify-between gap-2 px-4 pb-6">
+          {page > 1 ? (
+            <Link href={`/feed?page=${page - 1}`} className="flex h-10 flex-1 items-center justify-center rounded-xl border border-line bg-night-800 text-sm font-bold text-slate-300 hover:text-white">← Prev</Link>
+          ) : (
+            <span className="h-10 flex-1" />
+          )}
+          <span className="shrink-0 text-center text-xs text-slate-500">Page {page} of {Math.max(1, Math.ceil(count / PAGE_SIZE))}</span>
+          {page < Math.ceil(count / PAGE_SIZE) ? (
+            <Link href={`/feed?page=${page + 1}`} className="flex h-10 flex-1 items-center justify-center rounded-xl border border-line bg-night-800 text-sm font-bold text-slate-300 hover:text-white">Next →</Link>
+          ) : (
+            <span className="h-10 flex-1" />
+          )}
+        </div>
+      )}
 
       <BottomNav active="feed" />
     </div>
