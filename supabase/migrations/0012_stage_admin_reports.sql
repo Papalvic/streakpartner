@@ -63,14 +63,3 @@ create or replace function public.is_banned(p_user_id uuid) returns boolean
 language sql security definer set search_path = public as $$
   select is_banned from public.profiles where id = p_user_id;
 $$;
-</content>
-<path>supabase/migrations/0012_stage_admin_reports.sql</path>
-<task_progress>
-- [x] Inspect profiles schema
-- [x] Migration 0012: role, can_create_tournaments, is_banned, reports table + RLS + admin RPCs + is_banned helper
-- [ ] Enforce tournament creation permission (createTournament action + RPC)
-- [ ] Enforce login ban (auth login action checks is_banned)
-- [ ] Public profile report form (reason + optional image)
-- [ ] Admin page (reports paginated + users paginated/searchable + ban + permission)
-- [ ] Run build
-</task_progress>
