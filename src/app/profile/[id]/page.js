@@ -15,6 +15,8 @@ export default async function PublicProfilePage({ params }) {
     .from("profiles").select("*").eq("id", id).single();
   if (!profile) redirect("/feed");
 
+  const isSpecial = profile.role === "admin" || profile.can_create_tournaments;
+
   const bal = profile.balance ?? 0;
   const wins = profile.wins ?? 0;
   const losses = profile.losses ?? 0;
@@ -85,7 +87,23 @@ export default async function PublicProfilePage({ params }) {
           </div>
         </section>
 
-        {/* Stats */}
+        {/* Admin / Creator: no career stats, just a special badge */}
+        {isSpecial && (
+          <section className="mt-4 g-card rounded-2xl border border-accent/30 bg-accent-glow p-5 text-center">
+            <p className="text-3xl">{profile.role === "admin" ? "👑" : "🛡️"}</p>
+            <p className="mt-2 text-lg font-black text-accent">
+              {profile.role === "admin" ? "ADMIN" : "TOURNAMENT CREATOR"}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              {profile.role === "admin"
+                ? "Platform administrator"
+                : "Approved to host tournaments"}
+            </p>
+          </section>
+        )}
+
+        {/* Stats (players only) */}
+        {!isSpecial && (
         <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Stat label="Balance" value={bal.toLocaleString()} accent="text-accent" icon="🪙" />
           <Stat label="Matches" value={played} icon="⚽" />
@@ -96,11 +114,13 @@ export default async function PublicProfilePage({ params }) {
           <Stat label="Win Rate" value={`${winRate}%`} icon="📊" />
           <Stat label="Tournament Wins" value={trophies} accent="text-amber-400" icon="🏆" />
         </section>
+        )}
 
         {/* Report user (not on your own profile) */}
         <ReportUser reportedUserId={profile.id} currentUserId={user.id} />
 
-        {/* Recent matches (7) */}
+        {/* Recent matches (players only — admins/creators don't show career/matches) */}
+        {!isSpecial && (
         <section className="mt-5">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-slate-400">Recent Matches</h2>
           {matches?.length > 0 ? (
@@ -137,6 +157,7 @@ export default async function PublicProfilePage({ params }) {
             </div>
           )}
         </section>
+        )}
       </main>
 
       <BottomNav active="home" />
