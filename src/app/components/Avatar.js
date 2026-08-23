@@ -1,9 +1,9 @@
 import React from "react";
 
 // Original, locally-generated gaming avatars (no copyrighted characters).
-// Compact map: id -> [color1, color2, letter]
+// admin-1 / creator-1 are special: rendered as lion / crown icons.
 export const AVATAR_DEFS = {
-  "gamer-1": ["#25D366", "#1aa34f", "P"],
+  "gamer-1": ["#25D366", "#1aa34f", "♠️"],
   "striker": ["#2563eb", "#1d4ed8", "S"],
   "keeper": ["#f59e0b", "#b45309", "K"],
   "cyber-1": ["#a855f7", "#7c3aed", "N"],
@@ -34,14 +34,45 @@ export const AVATAR_DEFS = {
   "badge-6": ["#facc15", "#ca8a04", "G"],
   "badge-7": ["#fbbf24", "#92400e", "R"],
   "badge-8": ["#334155", "#1e293b", "S"],
+  "admin-1": ["#b45309", "#92400e", "L"],
+  "creator-1": ["#6d28d9", "#581c87", "C"],
 };
 
 export const AVATAR_KEYS = Object.keys(AVATAR_DEFS);
 
 export function Avatar({ avatarId = "gamer-1", size = 40, className = "" }) {
   const def = AVATAR_DEFS[avatarId] || AVATAR_DEFS["gamer-1"];
-  const [c1, c2, letter] = def;
+  const [c1, c2] = def;
   const gradId = `sp-av-${avatarId}`;
+  const isAdmin = avatarId === "admin-1";
+  const isCreator = avatarId === "creator-1";
+
+  const path =
+    isAdmin
+      ? (
+          <>
+            <text x="50" y="60" textAnchor="middle" dominantBaseline="middle" fontSize="50" fill="#ffffff" fontWeight="900">L</text>
+            <text x="50" y="86" textAnchor="middle" dominantBaseline="middle" fontSize="14" fill="#ffffff" fontWeight="900">★</text>
+          </>
+        )
+      : isCreator
+        ? (
+            <>
+              <text x="50" y="58" textAnchor="middle" dominantBaseline="middle" fontSize="46" fill="#ffffff" fontWeight="900">👑</text>
+            </>
+          )
+        : (
+            <>
+              <path d="M18 72 h26 l8 8 h14" stroke="#ffffff" strokeOpacity="0.18" strokeWidth="3" fill="none" />
+              <path d="M82 28 l-9 9 h-18 l-6 6" stroke="#ffffff" strokeOpacity="0.14" strokeWidth="3" fill="none" />
+              <circle cx="84" cy="82" r="3" fill="#fff" fillOpacity="0.6" />
+              <circle cx="16" cy="16" r="3" fill="#fff" fillOpacity="0.6" />
+              <text x="50" y="60" textAnchor="middle" dominantBaseline="middle" fontSize="42" fill="#ffffff" fontFamily="sans-serif" fontWeight="800">
+                {def[2]}
+              </text>
+            </>
+          );
+
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" className={className}>
       <defs>
@@ -51,13 +82,7 @@ export function Avatar({ avatarId = "gamer-1", size = 40, className = "" }) {
         </linearGradient>
       </defs>
       <rect width="100" height="100" rx="20" fill={`url(#${gradId})`} />
-      <path d="M18 72 h26 l8 8 h14" stroke="#ffffff" strokeOpacity="0.18" strokeWidth="3" fill="none" />
-      <path d="M82 28 l-9 9 h-18 l-6 6" stroke="#ffffff" strokeOpacity="0.14" strokeWidth="3" fill="none" />
-      <circle cx="84" cy="82" r="3" fill="#fff" fillOpacity="0.6" />
-      <circle cx="16" cy="16" r="3" fill="#fff" fillOpacity="0.6" />
-      <text x="50" y="60" textAnchor="middle" dominantBaseline="middle" fontSize="42" fill="#ffffff" fontFamily="sans-serif" fontWeight="800">
-        {letter}
-      </text>
+      {glyph}
     </svg>
   );
 }
