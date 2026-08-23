@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import BottomNav from "@/app/components/BottomNav";
 import AvatarWithPresence from "@/app/components/AvatarWithPresence";
+import ReportUser from "@/app/components/ReportUser";
 
 export default async function PublicProfilePage({ params }) {
   const { id } = await params;
@@ -95,6 +96,9 @@ export default async function PublicProfilePage({ params }) {
           <Stat label="Win Rate" value={`${winRate}%`} icon="📊" />
           <Stat label="Tournament Wins" value={trophies} accent="text-amber-400" icon="🏆" />
         </section>
+
+        {/* Report user (not on your own profile) */}
+        <ReportUser reportedUserId={profile.id} currentUserId={user.id} />
 
         {/* Recent matches (7) */}
         <section className="mt-5">

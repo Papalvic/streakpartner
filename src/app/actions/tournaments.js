@@ -122,6 +122,20 @@ export async function createTournament(formData) {
   const size = Number(formData.get("size"));
   const entryFee = Number(formData.get("entryFee") || 5);
 
+  // Only users granted permission by an admin may create tournaments.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated." };
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("can_create_tournaments, role")
+    .eq("id", user.id)
+    .single();
+  if (!profile?.can_create_tournaments && profile?.role !== "admin") {
+    return { error: "You do not have permission to create tournaments." };
+  }
+
   if (!name || !name.trim()) {
     return { error: "Give your tournament a name." };
   }

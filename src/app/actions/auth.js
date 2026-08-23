@@ -77,13 +77,29 @@ export async function logIn(prevState, formData) {
     return { error: "Email and password are required." };
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: signInData, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Blocked users are not allowed to log in.
+  const uid = signInData?.user?.id;
+  if (uid) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_banned")
+      .eq("id", uid)
+      .single();
+    if (profile?.is_banned) {
+      await supabase.auth.signOut();
+      return {
+        error: "Your account has been blocked. Please contact support.",
+      };
+    }
   }
 
   // Force the auth session cookies to be written before redirecting.
