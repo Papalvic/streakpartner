@@ -82,7 +82,7 @@ export function Avatar({ avatarId = "gamer-1", size = 40, className = "" }) {
         </linearGradient>
       </defs>
       <rect width="100" height="100" rx="20" fill={`url(#${gradId})`} />
-      {glyph}
+      {path}
     </svg>
   );
 }
