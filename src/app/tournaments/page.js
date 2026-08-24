@@ -19,12 +19,14 @@ export default async function TournamentsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Fetch user profile (balance for displaying)
+  // Fetch user profile (balance + tournament-creation permission)
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, display_name, balance")
+    .select("id, username, display_name, balance, can_create_tournaments, role")
     .eq("id", user.id)
     .single();
+
+  const canCreate = !!profile?.can_create_tournaments || profile?.role === "admin";
 
   // Fetch all tournaments with creator + winner info
   const { data: tournaments } = await supabase
@@ -71,8 +73,8 @@ export default async function TournamentsPage() {
           </p>
         </div>
 
-        {/* Create Tournament */}
-        <section className="g-card mb-5 p-4">
+        {/* Create Tournament (only approved creators / admins) */}
+        {canCreate && <section className="g-card mb-5 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
               <PlusIcon size={22} />
@@ -122,7 +124,7 @@ export default async function TournamentsPage() {
               Create Tournament
             </button>
           </form>
-        </section>
+        </section>}
 
         {/* Tournament list */}
         <section>
