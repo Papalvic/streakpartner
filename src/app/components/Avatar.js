@@ -51,14 +51,13 @@ export function Avatar({ avatarId = "gamer-1", size = 40, className = "" }) {
     isAdmin
       ? (
           <>
-            <text x="50" y="60" textAnchor="middle" dominantBaseline="middle" fontSize="50" fill="#ffffff" fontWeight="900">L</text>
-            <text x="50" y="86" textAnchor="middle" dominantBaseline="middle" fontSize="14" fill="#ffffff" fontWeight="900">★</text>
+            <text x="50" y="62" textAnchor="middle" dominantBaseline="middle" fontSize="42" fill="#ffffff" fontWeight="900">🦁</text>
           </>
         )
       : isCreator
         ? (
             <>
-              <text x="50" y="58" textAnchor="middle" dominantBaseline="middle" fontSize="46" fill="#ffffff" fontWeight="900">👑</text>
+              <text x="50" y="58" textAnchor="middle" dominantBaseline="middle" fontSize="42" fill="#ffffff" fontWeight="900">👑</text>
             </>
           )
         : (
