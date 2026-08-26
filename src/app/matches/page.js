@@ -44,15 +44,19 @@ export default async function MatchesPage({ searchParams }) {
     .order("created_at", { ascending: false })
     .range(from, to);
 
-  // Fetch scores for completed matches.
+  // Fetch scores + draw flags for completed matches.
   const completedIds = (matches || []).filter((m) => m.status === "completed").map((m) => m.id);
   const scores = {};
+  const drawById = {};
   if (completedIds.length > 0) {
     const { data: results } = await supabase
       .from("match_results")
-      .select("match_id, challenger_score, opponent_score")
+      .select("match_id, challenger_score, opponent_score, is_draw")
       .in("match_id", completedIds);
-    (results || []).forEach((r) => (scores[r.match_id] = r));
+    (results || []).forEach((r) => {
+      scores[r.match_id] = r;
+      drawById[r.match_id] = !!r.is_draw;
+    });
   }
 
   const isChallenger = (m) => m.challenger_id === user.id;
@@ -81,6 +85,7 @@ export default async function MatchesPage({ searchParams }) {
             {matches.map((m) => {
               const opp = getOpp(m);
               const won = m.winner_id === user.id;
+              const isDraw = !!drawById[m.id];
               const meta = STATUS_META[m.status] || STATUS_META.pending;
               const score = scores[m.id];
               const myScore = isChallenger(m) ? score?.challenger_score : score?.opponent_score;
@@ -110,8 +115,8 @@ export default async function MatchesPage({ searchParams }) {
                         {meta.label}
                       </span>
                       {m.status === "completed" && (
-                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
-                          {won ? `WON +${m.stake * 2}` : `LOST -${m.stake}`}
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isDraw ? "bg-blue-500/15 text-blue-400" : won ? "bg-accent/15 text-accent" : "bg-red-500/15 text-red-400"}`}>
+                          {isDraw ? "DRAW · STAKE RETURNED" : won ? `WON +${m.stake * 2}` : `LOST -${m.stake}`}
                         </span>
                       )}
                     </div>

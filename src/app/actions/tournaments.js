@@ -121,6 +121,8 @@ export async function createTournament(formData) {
   const name = formData.get("name");
   const size = Number(formData.get("size"));
   const entryFee = Number(formData.get("entryFee") || 5);
+  const creatorParticipates = formData.get("creatorParticipates") === "on";
+  const password = formData.get("password") || null;
 
   // Only users granted permission by an admin may create tournaments.
   const {
@@ -152,6 +154,8 @@ export async function createTournament(formData) {
     p_name: name.trim(),
     p_size: size,
     p_entry_fee: entryFee,
+    p_creator_participates: creatorParticipates,
+    p_password: password,
   });
 
   if (error) {
@@ -165,6 +169,7 @@ export async function createTournament(formData) {
 export async function joinTournament(formData) {
   const supabase = await createClient();
   const tournamentId = formData.get("tournamentId");
+  const password = formData.get("password") || null;
 
   if (!tournamentId) {
     return { error: "Tournament ID is required." };
@@ -172,6 +177,7 @@ export async function joinTournament(formData) {
 
   const { error } = await supabase.rpc("join_tournament", {
     p_tournament_id: tournamentId,
+    p_password: password,
   });
 
   if (error) {

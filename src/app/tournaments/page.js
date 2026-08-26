@@ -32,7 +32,7 @@ export default async function TournamentsPage() {
   const { data: tournaments } = await supabase
     .from("tournaments")
     .select(
-      `id, name, size, entry_fee, status, current_players, winner_id, created_at,
+      `id, name, size, entry_fee, status, current_players, winner_id, requires_password, created_at,
        creator:profiles!tournaments_creator_id_fkey(username, display_name),
        winner:profiles!tournaments_winner_id_fkey(username, display_name)`
     )
@@ -81,7 +81,7 @@ export default async function TournamentsPage() {
             </div>
             <div>
               <h2 className="text-base font-bold text-white">Create Tournament</h2>
-              <p className="text-[11px] text-slate-400">Make a bracket · you are player #1</p>
+              <p className="text-[11px] text-slate-400">Make a bracket · fully customisable</p>
             </div>
           </div>
           <form action={createTournament} className="mt-3 flex flex-col gap-3">
@@ -116,6 +116,45 @@ export default async function TournamentsPage() {
                 <option value="20">20 PromptCoin</option>
               </select>
             </div>
+
+            {/* Creator participates toggle (default OFF) */}
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-line bg-night-800 px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-white">Participate in this tournament</p>
+                <p className="text-[11px] text-slate-500">Pay the entry fee and join your own bracket</p>
+              </div>
+              <input
+                type="checkbox"
+                name="creatorParticipates"
+                className="peer sr-only"
+              />
+              <span className="relative h-6 w-11 shrink-0 rounded-full bg-night-700 transition-colors peer-checked:bg-accent">
+                <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
+              </span>
+            </label>
+
+            {/* Optional password protection */}
+            <details className="group rounded-xl border border-line bg-night-800">
+              <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-white">Password protect</p>
+                  <p className="text-[11px] text-slate-500">Only players with the pass key can join</p>
+                </div>
+                <span className="text-xs font-bold text-accent group-open:hidden">+ SET</span>
+                <span className="hidden text-xs font-bold text-accent group-open:block">− HIDE</span>
+              </summary>
+              <div className="border-t border-line p-3">
+                <input
+                  type="password"
+                  name="password"
+                  minLength={4}
+                  maxLength={32}
+                  placeholder="Enter a tournament pass key (min 4 chars)"
+                  className="h-11 w-full rounded-xl border border-line bg-night-900 px-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-accent"
+                />
+              </div>
+            </details>
+
             <button
               type="submit"
               className="flex h-11 items-center justify-center gap-1.5 rounded-xl bg-accent text-sm font-bold text-black transition-colors hover:bg-accent-soft"
@@ -166,6 +205,13 @@ export default async function TournamentsPage() {
                       {badge.label}
                     </span>
                   </div>
+
+                  {/* Lock badge for password-protected tournaments */}
+                  {t.requires_password && (
+                    <p className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-amber-400">
+                      <span>🔒</span> Password protected
+                    </p>
+                  )}
 
                   {/* Stats row */}
                   <div className="mt-3 grid grid-cols-3 gap-2">

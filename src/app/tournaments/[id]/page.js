@@ -29,7 +29,7 @@ export default async function TournamentDetailPage({ params }) {
   const { data: tournament } = await supabase
     .from("tournaments")
     .select(
-      `id, name, size, entry_fee, status, current_players, winner_id, created_at,
+      `id, name, size, entry_fee, status, current_players, winner_id, requires_password, created_at,
        creator:profiles!tournaments_creator_id_fkey(username, display_name)`
     )
     .eq("id", id)
@@ -159,6 +159,20 @@ export default async function TournamentDetailPage({ params }) {
             {!isJoined && tournament.status === "open" && (
               <form action={joinTournament} className="mt-4">
                 <input type="hidden" name="tournamentId" value={tournament.id} />
+                {tournament.requires_password && (
+                  <div className="mb-3">
+                    <label className="mb-1 flex items-center gap-1 text-xs font-bold text-amber-400">
+                      <span>🔒</span> This tournament is password protected
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      placeholder="Enter the tournament pass key"
+                      className="h-11 w-full rounded-xl border border-line bg-night-800 px-3 text-sm text-white outline-none transition-colors placeholder:text-slate-500 focus:border-accent"
+                    />
+                  </div>
+                )}
                 <button
                   type="submit"
                   className="flex h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-accent text-sm font-bold text-black transition-colors hover:bg-accent-soft"
